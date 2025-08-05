@@ -2,7 +2,7 @@
 
 [![Swift](https://img.shields.io/badge/Swift-5.7+-orange.svg)](https://swift.org)
 [![iOS](https://img.shields.io/badge/iOS-12.0+-blue.svg)](https://developer.apple.com/ios/)
-[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
 iOS/macOS SDK for WuKongIM real-time messaging. Add chat functionality to your app in minutes.
 
@@ -197,7 +197,7 @@ class ChatManager: ObservableObject {
 
 ## License
 
-MIT License. See [LICENSE](LICENSE) file.
+Apache License 2.0. See [LICENSE](LICENSE) file.
 
 ## Support
 

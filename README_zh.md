@@ -2,7 +2,7 @@
 
 [![Swift](https://img.shields.io/badge/Swift-5.7+-orange.svg)](https://swift.org)
 [![iOS](https://img.shields.io/badge/iOS-12.0+-blue.svg)](https://developer.apple.com/ios/)
-[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
 WuKongIM 实时消息 iOS/macOS SDK。几分钟内为您的应用添加聊天功能。
 
@@ -197,7 +197,7 @@ class ChatManager: ObservableObject {
 
 ## 许可证
 
-MIT 许可证。查看 [LICENSE](LICENSE) 文件。
+Apache License 2.0 许可证。查看 [LICENSE](LICENSE) 文件。
 
 ## 支持
 
