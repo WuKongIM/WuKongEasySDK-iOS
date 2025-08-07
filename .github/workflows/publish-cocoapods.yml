@@ -1,0 +1,183 @@
+name: Publish to CocoaPods
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'  # 触发条件：版本标签 (v1.0.0, v1.0.1, etc.)
+    branches:
+      - main      # 确保只在主分支上的标签触发
+
+env:
+  DEVELOPER_DIR: /Applications/Xcode.app/Contents/Developer
+
+jobs:
+  validate-and-publish:
+    name: Validate and Publish to CocoaPods
+    runs-on: macos-latest
+    
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # 获取完整的 Git 历史
+    
+    - name: Setup Ruby
+      uses: ruby/setup-ruby@v1
+      with:
+        ruby-version: '3.1'
+        bundler-cache: true
+    
+    - name: Install CocoaPods
+      run: |
+        gem install cocoapods
+        pod --version
+    
+    - name: Setup Xcode
+      uses: maxim-lobanov/setup-xcode@v1
+      with:
+        xcode-version: latest-stable
+    
+    - name: Extract Version from Tag
+      id: extract_version
+      run: |
+        TAG_NAME=${GITHUB_REF#refs/tags/}
+        VERSION=${TAG_NAME#v}  # 移除 'v' 前缀
+        echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        echo "Extracted version: $VERSION from tag: $TAG_NAME"
+    
+    - name: Verify Branch is Main
+      run: |
+        CURRENT_BRANCH=$(git branch --show-current)
+        if [ "$CURRENT_BRANCH" != "main" ]; then
+          echo "❌ Error: Tag must be created on main branch. Current branch: $CURRENT_BRANCH"
+          exit 1
+        fi
+        echo "✅ Confirmed: Tag is on main branch"
+    
+    - name: Validate Podspec Version
+      run: |
+        PODSPEC_VERSION=$(grep -E "^\s*spec\.version\s*=" WuKongEasySDK.podspec | sed -E 's/.*"([^"]+)".*/\1/')
+        TAG_VERSION="${{ steps.extract_version.outputs.version }}"
+        
+        echo "Podspec version: $PODSPEC_VERSION"
+        echo "Tag version: $TAG_VERSION"
+        
+        if [ "$PODSPEC_VERSION" != "$TAG_VERSION" ]; then
+          echo "❌ Error: Podspec version ($PODSPEC_VERSION) doesn't match tag version ($TAG_VERSION)"
+          echo "Please update the version in WuKongEasySDK.podspec to match the tag"
+          exit 1
+        fi
+        echo "✅ Version validation passed"
+    
+    - name: Lint Podspec
+      run: |
+        echo "🔍 Validating podspec..."
+        pod spec lint WuKongEasySDK.podspec --allow-warnings --verbose
+        echo "✅ Podspec validation completed successfully"
+    
+    - name: Setup CocoaPods Trunk Authentication
+      run: |
+        if [ -z "${{ secrets.COCOAPODS_TRUNK_TOKEN }}" ]; then
+          echo "❌ Error: COCOAPODS_TRUNK_TOKEN secret is not set"
+          echo "Please add your CocoaPods Trunk token to GitHub Secrets"
+          exit 1
+        fi
+        
+        # 创建 CocoaPods 配置目录
+        mkdir -p ~/.cocoapods
+        
+        # 设置 Trunk token
+        echo "${{ secrets.COCOAPODS_TRUNK_TOKEN }}" > ~/.cocoapods/trunk_token
+        
+        # 验证 token
+        pod trunk me
+        echo "✅ CocoaPods authentication successful"
+    
+    - name: Publish to CocoaPods Trunk
+      id: publish
+      run: |
+        echo "🚀 Publishing WuKongEasySDK v${{ steps.extract_version.outputs.version }} to CocoaPods..."
+        
+        # 执行发布命令
+        pod trunk push WuKongEasySDK.podspec --allow-warnings --verbose
+        
+        echo "✅ Successfully published to CocoaPods Trunk!"
+        echo "published=true" >> $GITHUB_OUTPUT
+    
+    - name: Wait for CocoaPods Indexing
+      if: steps.publish.outputs.published == 'true'
+      run: |
+        echo "⏳ Waiting for CocoaPods to index the new version..."
+        sleep 60  # 等待 CocoaPods 索引新版本
+        
+        # 验证发布是否成功
+        echo "🔍 Verifying publication..."
+        pod search WuKongEasySDK --simple | grep "${{ steps.extract_version.outputs.version }}" || {
+          echo "⚠️  Warning: New version not yet indexed by CocoaPods search"
+          echo "This is normal and may take a few minutes"
+        }
+    
+    - name: Create GitHub Release
+      if: steps.publish.outputs.published == 'true'
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ steps.extract_version.outputs.tag_name }}
+        release_name: WuKongEasySDK ${{ steps.extract_version.outputs.tag_name }}
+        body: |
+          ## WuKongEasySDK ${{ steps.extract_version.outputs.version }}
+          
+          🎉 **Successfully published to CocoaPods!**
+          
+          ### Installation
+          
+          Add this to your `Podfile`:
+          ```ruby
+          pod 'WuKongEasySDK', '~> ${{ steps.extract_version.outputs.version }}'
+          ```
+          
+          Then run:
+          ```bash
+          pod install
+          ```
+          
+          ### CocoaPods
+          - 📦 **CocoaPods**: [WuKongEasySDK](https://cocoapods.org/pods/WuKongEasySDK)
+          - 🔍 **Search**: `pod search WuKongEasySDK`
+          
+          ### Changes
+          See [CHANGELOG.md](CHANGELOG.md) for detailed changes in this release.
+          
+          ---
+          
+          **Published automatically via GitHub Actions** 🤖
+        draft: false
+        prerelease: false
+    
+    - name: Notify Success
+      if: steps.publish.outputs.published == 'true'
+      run: |
+        echo "🎉 SUCCESS! WuKongEasySDK v${{ steps.extract_version.outputs.version }} has been published!"
+        echo ""
+        echo "📦 CocoaPods: https://cocoapods.org/pods/WuKongEasySDK"
+        echo "🏷️  GitHub Release: https://github.com/${{ github.repository }}/releases/tag/${{ steps.extract_version.outputs.tag_name }}"
+        echo ""
+        echo "Users can now install with:"
+        echo "pod 'WuKongEasySDK', '~> ${{ steps.extract_version.outputs.version }}'"
+    
+    - name: Cleanup on Failure
+      if: failure()
+      run: |
+        echo "❌ Publication failed. Cleaning up..."
+        
+        # 清理可能的临时文件
+        rm -f ~/.cocoapods/trunk_token
+        
+        echo ""
+        echo "🔧 Troubleshooting tips:"
+        echo "1. Check that the podspec version matches the Git tag"
+        echo "2. Ensure COCOAPODS_TRUNK_TOKEN is correctly set in GitHub Secrets"
+        echo "3. Verify the podspec passes validation: pod spec lint --allow-warnings"
+        echo "4. Check CocoaPods Trunk status: https://status.cocoapods.org/"

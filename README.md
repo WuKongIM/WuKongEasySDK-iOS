@@ -190,12 +190,51 @@ class ChatManager: ObservableObject {
 }
 ```
 
+## Development & Release
+
+### Automatic Release to CocoaPods
+
+This project uses GitHub Actions to automatically publish new versions to CocoaPods when tags are created.
+
+#### Quick Release Process
+
+```bash
+# Use the release script (recommended)
+./scripts/release.sh 1.0.1
+
+# Or manually:
+# 1. Update version in WuKongEasySDK.podspec
+# 2. Update CHANGELOG.md
+# 3. Commit changes
+# 4. Create and push tag: git tag v1.0.1 && git push origin v1.0.1
+```
+
+#### Setup Requirements
+
+For maintainers, ensure the following GitHub Secret is configured:
+- `COCOAPODS_TRUNK_TOKEN`: Your CocoaPods Trunk API token
+
+For detailed instructions, see:
+- [CocoaPods Setup Guide](docs/COCOAPODS_SETUP.md)
+- [Release Guide](docs/RELEASE_GUIDE.md)
+
+### Manual Development
+
+```bash
+# Clone the repository
+git clone https://github.com/your-username/WuKongEasySDK.git
+cd WuKongEasySDK
+
+# Validate podspec
+pod spec lint WuKongEasySDK.podspec --allow-warnings
+```
+
 ## Documentation
 
 - [WuKongIM Documentation](https://docs.wukongim.com)
 - [API Reference](https://docs.wukongim.com/sdk/ios)
-- [CocoaPods Publishing Guide](docs/COCOAPODS_PUBLISHING.md)
-- [Podspec Maintenance Guide](docs/PODSPEC_MAINTENANCE.md)
+- [CocoaPods Setup Guide](docs/COCOAPODS_SETUP.md)
+- [Release Guide](docs/RELEASE_GUIDE.md)
 
 ## License
 
