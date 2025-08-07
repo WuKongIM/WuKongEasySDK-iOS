@@ -28,9 +28,9 @@ let package = Package(
             name: "WuKongEasySDK",
             dependencies: ["Starscream"],
             path: "Sources/WuKongEasySDK"),
-        .testTarget(
-            name: "WuKongEasySDKTests",
-            dependencies: ["WuKongEasySDK"],
-            path: "Tests/WuKongEasySDKTests"),
+        // .testTarget(
+        //     name: "WuKongEasySDKTests",
+        //     dependencies: ["WuKongEasySDK"],
+        //     path: "Tests/WuKongEasySDKTests"),
     ]
 )

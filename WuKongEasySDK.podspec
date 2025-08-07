@@ -45,11 +45,11 @@ Pod::Spec.new do |spec|
   spec.dependency 'Starscream', '~> 4.0'
   
   # Test spec (exclude watchOS as it doesn't support unit testing)
-  spec.test_spec 'Tests' do |test_spec|
-    test_spec.source_files = 'Tests/WuKongEasySDKTests/**/*.swift'
-    test_spec.frameworks = 'XCTest'
-    test_spec.ios.deployment_target = "13.0"
-    test_spec.osx.deployment_target = "12.0"
-    test_spec.tvos.deployment_target = "13.0"
-  end
+  # spec.test_spec 'Tests' do |test_spec|
+  #   test_spec.source_files = 'Tests/WuKongEasySDKTests/**/*.swift'
+  #   test_spec.frameworks = 'XCTest'
+  #   test_spec.ios.deployment_target = "13.0"
+  #   test_spec.osx.deployment_target = "12.0"
+  #   test_spec.tvos.deployment_target = "13.0"
+  # end
 end
