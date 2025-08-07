@@ -16,7 +16,7 @@ WuKongIM 实时消息 iOS/macOS SDK。几分钟内为您的应用添加聊天功
 
 ## 系统要求
 
-- iOS 12.0+ / macOS 10.15+ / tvOS 13.0+ / watchOS 6.0+
+- iOS 13.0+ / macOS 12.0+ / tvOS 13.0+ / watchOS 6.0+
 - Xcode 12.0+
 - Swift 5.7+
 

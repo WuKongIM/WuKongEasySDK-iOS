@@ -20,8 +20,8 @@ Pod::Spec.new do |spec|
   spec.license      = { :type => "Apache-2.0", :file => "LICENSE" }
   spec.author       = { "WuKongIM" => "support@wukongim.com" }
   
-  spec.ios.deployment_target = "12.0"
-  spec.osx.deployment_target = "10.15"
+  spec.ios.deployment_target = "13.0"
+  spec.osx.deployment_target = "12.0"
   spec.tvos.deployment_target = "13.0"
   spec.watchos.deployment_target = "6.0"
   
@@ -48,8 +48,8 @@ Pod::Spec.new do |spec|
   spec.test_spec 'Tests' do |test_spec|
     test_spec.source_files = 'Tests/WuKongEasySDKTests/**/*.swift'
     test_spec.frameworks = 'XCTest'
-    test_spec.ios.deployment_target = "12.0"
-    test_spec.osx.deployment_target = "10.15"
+    test_spec.ios.deployment_target = "13.0"
+    test_spec.osx.deployment_target = "12.0"
     test_spec.tvos.deployment_target = "13.0"
   end
 end

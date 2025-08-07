@@ -309,6 +309,8 @@ extension WuKongError {
             return .connectionFailed("WebSocket security error: \(wsError.message)")
         case .protocolError:
             return .protocolError(Int(wsError.code), wsError.message)
+        case .serverError:
+            return .serverDisconnected(Int(wsError.code), wsError.message)
         @unknown default:
             return .networkError("WebSocket error: \(wsError.message)")
         }
