@@ -36,17 +36,20 @@ Pod::Spec.new do |spec|
   spec.requires_arc = true
   
   # Documentation
-  spec.documentation_url = "https://docs.wukongim.com"
-  
+  # spec.documentation_url = "https://docs.wukongim.com"
+
   # Metadata
-  spec.social_media_url = "https://twitter.com/wukongim"
+  # spec.social_media_url = "https://twitter.com/wukongim"
   
   # Dependencies
-  # No external dependencies - pure Swift implementation
+  spec.dependency 'Starscream', '~> 4.0'
   
-  # Test spec
+  # Test spec (exclude watchOS as it doesn't support unit testing)
   spec.test_spec 'Tests' do |test_spec|
     test_spec.source_files = 'Tests/WuKongEasySDKTests/**/*.swift'
     test_spec.frameworks = 'XCTest'
+    test_spec.ios.deployment_target = "12.0"
+    test_spec.osx.deployment_target = "10.15"
+    test_spec.tvos.deployment_target = "13.0"
   end
 end
