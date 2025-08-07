@@ -770,7 +770,7 @@ internal enum WebSocketState: String, CaseIterable {
 
 /// Main WebSocket manager that handles connection, authentication, and messaging
 /// Implements JSON-RPC 2.0 protocol for communication with WuKong server
-internal class WuKongWebSocket: NSObject {
+internal class WuKongWebSocket: NSObject, @unchecked Sendable {
 
     // MARK: - Core Properties
 
@@ -851,10 +851,14 @@ internal class WuKongWebSocket: NSObject {
 
     /// Establishes connection to the WebSocket server and authenticates
     /// - Throws: WuKongError if connection or authentication fails
-    func connect() async throws {
+    nonisolated func connect() async throws {
         return try await withCheckedThrowingContinuation { continuation in
-            queue.async {
-                self.connectInternal { result in
+            queue.async { [weak self] in
+                guard let strongSelf = self else {
+                    continuation.resume(throwing: WuKongError.connectionFailed("WebSocket instance was deallocated"))
+                    return
+                }
+                strongSelf.connectInternal { result in
                     switch result {
                     case .success:
                         continuation.resume()
@@ -882,10 +886,14 @@ internal class WuKongWebSocket: NSObject {
     ///   - options: Additional options (clientMsgNo, header, etc.)
     /// - Returns: SendResult containing message ID and sequence number
     /// - Throws: WuKongError if not connected or send fails
-    func send(channelId: String, channelType: ChannelType, payload: [String: Any], options: [String: Any] = [:]) async throws -> SendResult {
+    nonisolated func send(channelId: String, channelType: ChannelType, payload: [String: Any], options: [String: Any] = [:]) async throws -> SendResult {
         return try await withCheckedThrowingContinuation { continuation in
-            queue.async {
-                self.sendInternal(channelId: channelId, channelType: channelType, payload: payload, options: options) { result in
+            queue.async { [weak self] in
+                guard let strongSelf = self else {
+                    continuation.resume(throwing: WuKongError.connectionFailed("WebSocket instance was deallocated"))
+                    return
+                }
+                strongSelf.sendInternal(channelId: channelId, channelType: channelType, payload: payload, options: options) { result in
                     switch result {
                     case .success(let sendResult):
                         continuation.resume(returning: sendResult)
@@ -1192,7 +1200,7 @@ internal class WuKongWebSocket: NSObject {
             pendingRequests[request.id] = pendingRequest
 
             // Send message over WebSocket using Starscream
-            webSocket?.write(data: requestData) { [weak self] in
+            webSocket?.write(data: requestData) {
                 // Message sent successfully - no action needed
                 // Errors will be handled through the WebSocketDelegate
             }
@@ -1225,7 +1233,7 @@ internal class WuKongWebSocket: NSObject {
             )
 
             // Send notification over WebSocket using Starscream
-            webSocket?.write(data: notificationData) { [weak self] in
+            webSocket?.write(data: notificationData) {
                 // Notification sent successfully - no action needed
                 // Errors will be handled through the WebSocketDelegate
             }
@@ -1469,7 +1477,7 @@ internal class WuKongWebSocket: NSObject {
         )
 
         // Send ping using Starscream
-        webSocket?.write(data: data) { [weak self] in
+        webSocket?.write(data: data) {
             // Ping sent successfully - no action needed
             // Errors will be handled through the WebSocketDelegate
         }
