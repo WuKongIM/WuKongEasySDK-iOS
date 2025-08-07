@@ -194,6 +194,8 @@ class ChatManager: ObservableObject {
 
 - [WuKongIM Documentation](https://docs.wukongim.com)
 - [API Reference](https://docs.wukongim.com/sdk/ios)
+- [CocoaPods Publishing Guide](docs/COCOAPODS_PUBLISHING.md)
+- [Podspec Maintenance Guide](docs/PODSPEC_MAINTENANCE.md)
 
 ## License
 

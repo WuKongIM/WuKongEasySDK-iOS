@@ -194,6 +194,8 @@ class ChatManager: ObservableObject {
 
 - [WuKongIM 文档](https://docs.wukongim.com)
 - [API 参考](https://docs.wukongim.com/sdk/ios)
+- [CocoaPods 发布指南](docs/COCOAPODS_PUBLISHING_zh.md)
+- [Podspec 维护指南](docs/PODSPEC_MAINTENANCE.md)
 
 ## 许可证
 
