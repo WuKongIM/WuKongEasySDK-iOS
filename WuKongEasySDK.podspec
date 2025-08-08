@@ -1,6 +1,6 @@
 Pod::Spec.new do |spec|
   spec.name         = "WuKongEasySDK"
-  spec.version      = "v1.0.0"
+  spec.version      = "1.0.0"
   spec.summary      = "A lightweight iOS SDK for WuKongIM real-time messaging"
   spec.description  = <<-DESC
                       WuKongIM iOS EasySDK is a lightweight iOS SDK that allows you to add real-time chat functionality to iOS applications in 5 minutes. 
