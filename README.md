@@ -211,7 +211,8 @@ This project uses GitHub Actions to automatically publish new versions to CocoaP
 
 #### Setup Requirements
 
-For maintainers, ensure the following GitHub Secret is configured:
+For maintainers, ensure the following GitHub Secrets are configured:
+- `COCOAPODS_TRUNK_EMAIL`: Your CocoaPods Trunk registered email address
 - `COCOAPODS_TRUNK_TOKEN`: Your CocoaPods Trunk API token
 
 For detailed instructions, see:

@@ -80,19 +80,21 @@ machine trunk.cocoapods.org
 2. 点击 **Settings** 标签
 3. 在左侧菜单中选择 **Secrets and variables** → **Actions**
 
-### 步骤 2: 添加 Secret
+### 步骤 2: 添加 Secrets
 
 1. 点击 **New repository secret**
-2. 设置以下 Secret：
+2. 设置以下两个 Secrets：
 
 | Secret 名称 | 值 | 描述 |
 |------------|----|----|
+| `COCOAPODS_TRUNK_EMAIL` | 您注册 CocoaPods Trunk 时使用的邮箱地址 | 用于身份验证的邮箱 |
 | `COCOAPODS_TRUNK_TOKEN` | 您的 CocoaPods Trunk token | 用于身份验证的 token |
 
 ### 步骤 3: 验证设置
 
-确保 Secret 已正确添加：
-- Secret 名称必须完全匹配：`COCOAPODS_TRUNK_TOKEN`
+确保两个 Secrets 都已正确添加：
+- Secret 名称必须完全匹配：`COCOAPODS_TRUNK_EMAIL` 和 `COCOAPODS_TRUNK_TOKEN`
+- Email 值必须与注册 CocoaPods Trunk 时使用的邮箱完全一致
 - Token 值不应包含额外的空格或换行符
 
 ## 3. 使用自动发布流程
@@ -189,14 +191,16 @@ Error: Authentication failed
 ```
 
 **解决方案**:
+- 检查 `COCOAPODS_TRUNK_EMAIL` Secret 是否正确设置（必须与注册时的邮箱完全一致）
 - 检查 `COCOAPODS_TRUNK_TOKEN` Secret 是否正确设置
 - 确认 token 没有过期
 - 验证本地认证状态: `pod trunk me`
+- 使用脚本获取正确的认证信息: `./scripts/get-cocoapods-token.sh`
 - 重新注册获取新 token:
   ```bash
   pod trunk register your-email@example.com 'Your Name' --description='GitHub Actions'
   ```
-- 确保 token 是从 `~/.netrc` 文件中的 `password` 字段获取的
+- 确保邮箱和 token 都是从 `~/.netrc` 文件中获取的
 
 #### 2. 版本不匹配
 ```

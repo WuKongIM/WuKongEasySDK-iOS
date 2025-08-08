@@ -102,12 +102,13 @@ fi
 
 print_success "CocoaPods Trunk 认证成功"
 
-# 提取 token
-print_info "提取 CocoaPods Trunk token..."
+# 提取 email 和 token
+print_info "提取 CocoaPods Trunk 认证信息..."
+EMAIL=$(grep -A2 "machine trunk.cocoapods.org" ~/.netrc | grep login | awk '{print $2}')
 TOKEN=$(grep -A2 "machine trunk.cocoapods.org" ~/.netrc | grep password | awk '{print $2}')
 
-if [ -z "$TOKEN" ]; then
-    print_error "无法从 .netrc 文件中提取 token"
+if [ -z "$EMAIL" ] || [ -z "$TOKEN" ]; then
+    print_error "无法从 .netrc 文件中提取认证信息"
     echo
     print_info "请检查 ~/.netrc 文件格式是否正确："
     echo "machine trunk.cocoapods.org"
@@ -116,31 +117,42 @@ if [ -z "$TOKEN" ]; then
     exit 1
 fi
 
-print_success "Token 提取成功"
+print_success "认证信息提取成功"
 
 # 显示结果
 echo
-echo "🎉 CocoaPods Trunk Token 获取成功！"
-echo "=================================="
+echo "🎉 CocoaPods Trunk 认证信息获取成功！"
+echo "====================================="
 echo
-print_info "您的 CocoaPods Trunk Token:"
+print_info "您的 CocoaPods Trunk 认证信息："
 echo
-echo "📋 复制以下 token 到 GitHub Secrets 中："
-echo "Secret 名称: COCOAPODS_TRUNK_TOKEN"
-echo "Secret 值:"
+echo "📋 复制以下信息到 GitHub Secrets 中："
 echo
+echo "Secret 1 - 邮箱地址:"
+echo "名称: COCOAPODS_TRUNK_EMAIL"
+echo "值: $EMAIL"
+echo
+echo "Secret 2 - Token:"
+echo "名称: COCOAPODS_TRUNK_TOKEN"
+echo "值:"
 echo "----------------------------------------"
 echo "$TOKEN"
 echo "----------------------------------------"
 echo
-print_warning "请妥善保管此 token，不要泄露给他人"
+print_warning "请妥善保管这些信息，不要泄露给他人"
 echo
-print_info "设置 GitHub Secret 的步骤："
+print_info "设置 GitHub Secrets 的步骤："
 echo "1. 访问 GitHub 仓库"
 echo "2. 进入 Settings > Secrets and variables > Actions"
 echo "3. 点击 'New repository secret'"
-echo "4. 名称填写: COCOAPODS_TRUNK_TOKEN"
-echo "5. 值填写上面显示的 token"
-echo "6. 点击 'Add secret'"
+echo "4. 添加第一个 Secret:"
+echo "   - 名称: COCOAPODS_TRUNK_EMAIL"
+echo "   - 值: $EMAIL"
+echo "5. 点击 'Add secret'"
+echo "6. 再次点击 'New repository secret'"
+echo "7. 添加第二个 Secret:"
+echo "   - 名称: COCOAPODS_TRUNK_TOKEN"
+echo "   - 值: 上面显示的 token"
+echo "8. 点击 'Add secret'"
 echo
 print_success "设置完成后即可使用自动发布功能！"

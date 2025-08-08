@@ -72,10 +72,16 @@ jobs:
           exit 1
         fi
 
+        if [ -z "${{ secrets.COCOAPODS_TRUNK_EMAIL }}" ]; then
+          echo "❌ Error: COCOAPODS_TRUNK_EMAIL secret is not set"
+          echo "Please add your CocoaPods Trunk registered email to GitHub Secrets"
+          exit 1
+        fi
+
         # 创建 .netrc 文件进行认证
         cat > ~/.netrc << EOF
         machine trunk.cocoapods.org
-          login ${{ github.actor }}
+          login ${{ secrets.COCOAPODS_TRUNK_EMAIL }}
           password ${{ secrets.COCOAPODS_TRUNK_TOKEN }}
         EOF
 
@@ -172,6 +178,7 @@ jobs:
         echo "🔧 Troubleshooting tips:"
         echo "1. Check that the podspec version matches the Git tag"
         echo "2. Ensure COCOAPODS_TRUNK_TOKEN is correctly set in GitHub Secrets"
-        echo "3. Verify the podspec passes validation: pod spec lint --allow-warnings"
-        echo "4. Check CocoaPods Trunk status: https://status.cocoapods.org/"
-        echo "5. Verify your CocoaPods Trunk registration: pod trunk me"
+        echo "3. Ensure COCOAPODS_TRUNK_EMAIL is correctly set in GitHub Secrets"
+        echo "4. Verify the podspec passes validation: pod spec lint --allow-warnings"
+        echo "5. Check CocoaPods Trunk status: https://status.cocoapods.org/"
+        echo "6. Verify your CocoaPods Trunk registration: pod trunk me"

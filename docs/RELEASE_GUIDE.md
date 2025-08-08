@@ -89,7 +89,9 @@ git push origin v1.0.1
 
 ### GitHub Secrets 检查
 
+- [ ] `COCOAPODS_TRUNK_EMAIL` 已设置（注册时使用的邮箱）
 - [ ] `COCOAPODS_TRUNK_TOKEN` 已设置
+- [ ] 邮箱地址与 CocoaPods Trunk 注册信息完全一致
 - [ ] Token 有效且未过期
 - [ ] 具有发布权限
 
@@ -153,17 +155,19 @@ Error: Authentication failed
 ```
 
 **解决方案**:
-1. 使用脚本获取正确的 token:
+1. 使用脚本获取正确的认证信息:
    ```bash
    ./scripts/get-cocoapods-token.sh
    ```
-2. 检查 GitHub Secrets 中的 `COCOAPODS_TRUNK_TOKEN`
+2. 检查 GitHub Secrets 中的两个配置:
+   - `COCOAPODS_TRUNK_EMAIL`: 注册时使用的邮箱地址
+   - `COCOAPODS_TRUNK_TOKEN`: 认证 token
 3. 验证本地认证: `pod trunk me`
-4. 重新注册获取新 token:
+4. 重新注册获取新认证信息:
    ```bash
    pod trunk register your-email@example.com 'Your Name' --description='GitHub Actions'
    ```
-5. 更新 GitHub Secret
+5. 更新两个 GitHub Secrets
 
 #### 4. 分支限制错误
 
