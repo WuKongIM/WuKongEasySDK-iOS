@@ -158,9 +158,9 @@ spec.version = "1.0.1"  # 对应标签 v1.0.1
 1. **环境设置**: 安装 Ruby、CocoaPods、Xcode
 2. **版本验证**: 检查标签版本与 podspec 版本是否匹配
 3. **Podspec 验证**: 运行 `pod spec lint --allow-warnings`
-4. **身份验证**: 使用 Trunk token 进行身份验证
+4. **身份验证**: 使用 .netrc 文件进行 CocoaPods Trunk 认证
 5. **发布**: 执行 `pod trunk push --allow-warnings`
-6. **创建 Release**: 自动创建 GitHub Release
+6. **创建 Release**: 使用 GitHub CLI 自动创建 GitHub Release
 
 ### 验证发布成功
 

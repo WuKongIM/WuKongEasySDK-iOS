@@ -11,6 +11,9 @@ jobs:
   validate-and-publish:
     name: Validate and Publish to CocoaPods
     runs-on: macos-latest
+    permissions:
+      contents: write  # Required for creating releases
+      actions: read    # Required for workflow access
     
     steps:
     - name: Checkout Repository
@@ -104,56 +107,48 @@ jobs:
         echo "✅ Successfully published to CocoaPods Trunk!"
         echo "published=true" >> $GITHUB_OUTPUT
     
-    - name: Wait for CocoaPods Indexing
-      if: steps.publish.outputs.published == 'true'
-      run: |
-        echo "⏳ Waiting for CocoaPods to index the new version..."
-        sleep 60  # 等待 CocoaPods 索引新版本
-        
-        # 验证发布是否成功
-        echo "🔍 Verifying publication..."
-        pod search WuKongEasySDK --simple | grep "${{ steps.extract_version.outputs.version }}" || {
-          echo "⚠️  Warning: New version not yet indexed by CocoaPods search"
-          echo "This is normal and may take a few minutes"
-        }
-    
     - name: Create GitHub Release
       if: steps.publish.outputs.published == 'true'
-      uses: actions/create-release@v1
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        tag_name: ${{ steps.extract_version.outputs.tag_name }}
-        release_name: WuKongEasySDK ${{ steps.extract_version.outputs.tag_name }}
-        body: |
-          ## WuKongEasySDK ${{ steps.extract_version.outputs.version }}
-          
-          🎉 **Successfully published to CocoaPods!**
-          
-          ### Installation
-          
-          Add this to your `Podfile`:
-          ```ruby
-          pod 'WuKongEasySDK', '~> ${{ steps.extract_version.outputs.version }}'
-          ```
-          
-          Then run:
-          ```bash
-          pod install
-          ```
-          
-          ### CocoaPods
-          - 📦 **CocoaPods**: [WuKongEasySDK](https://cocoapods.org/pods/WuKongEasySDK)
-          - 🔍 **Search**: `pod search WuKongEasySDK`
-          
-          ### Changes
-          See [CHANGELOG.md](CHANGELOG.md) for detailed changes in this release.
-          
-          ---
-          
-          **Published automatically via GitHub Actions** 🤖
-        draft: false
-        prerelease: false
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        # Create release notes
+        cat > release_notes.md << 'EOF'
+        ## WuKongEasySDK ${{ steps.extract_version.outputs.version }}
+
+        🎉 **Successfully published to CocoaPods!**
+
+        ### Installation
+
+        Add this to your `Podfile`:
+        ```ruby
+        pod 'WuKongEasySDK', '~> ${{ steps.extract_version.outputs.version }}'
+        ```
+
+        Then run:
+        ```bash
+        pod install
+        ```
+
+        ### CocoaPods
+        - 📦 **CocoaPods**: [WuKongEasySDK](https://cocoapods.org/pods/WuKongEasySDK)
+        - 🔍 **Search**: `pod search WuKongEasySDK`
+
+        ### Changes
+        See [CHANGELOG.md](CHANGELOG.md) for detailed changes in this release.
+
+        ---
+
+        **Published automatically via GitHub Actions** 🤖
+        EOF
+
+        # Create the release using GitHub CLI
+        gh release create "${{ steps.extract_version.outputs.tag_name }}" \
+          --title "WuKongEasySDK ${{ steps.extract_version.outputs.tag_name }}" \
+          --notes-file release_notes.md \
+          --latest
+
+        echo "✅ GitHub Release created successfully"
     
     - name: Notify Success
       if: steps.publish.outputs.published == 'true'
@@ -165,6 +160,10 @@ jobs:
         echo ""
         echo "Users can now install with:"
         echo "pod 'WuKongEasySDK', '~> ${{ steps.extract_version.outputs.version }}'"
+        echo ""
+        echo "🔍 Verify the release:"
+        echo "- Check CocoaPods: pod search WuKongEasySDK"
+        echo "- View GitHub Release: gh release view ${{ steps.extract_version.outputs.tag_name }}"
     
     - name: Cleanup on Failure
       if: failure()
@@ -182,3 +181,4 @@ jobs:
         echo "4. Verify the podspec passes validation: pod spec lint --allow-warnings"
         echo "5. Check CocoaPods Trunk status: https://status.cocoapods.org/"
         echo "6. Verify your CocoaPods Trunk registration: pod trunk me"
+        echo "7. Check GitHub token permissions for release creation"
