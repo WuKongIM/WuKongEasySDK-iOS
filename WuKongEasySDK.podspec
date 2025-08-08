@@ -27,7 +27,7 @@ Pod::Spec.new do |spec|
   
   spec.swift_version = "5.7"
   
-  spec.source       = { :git => "https://github.com/WuKongIM/WuKongEasySDK-iOS.git", :tag => "#{spec.version}" }
+  spec.source       = { :git => "https://github.com/WuKongIM/WuKongEasySDK-iOS.git", :tag => "v#{spec.version}" }
   
   spec.source_files = "Sources/WuKongEasySDK/**/*.swift"
   
