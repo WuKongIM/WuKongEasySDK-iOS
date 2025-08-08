@@ -38,11 +38,15 @@ pod trunk me
 CocoaPods Trunk token 通常存储在：
 ```bash
 # macOS/Linux
-cat ~/.cocoapods/trunk_token
+cat ~/.netrc
 
-# 或者查看配置目录
-ls -la ~/.cocoapods/
 ```
+machine trunk.cocoapods.org
+  login xxxx
+  password xxxx
+```
+
+password 后面的值即为 token。
 
 如果文件不存在，可以通过以下命令生成新的 session：
 ```bash

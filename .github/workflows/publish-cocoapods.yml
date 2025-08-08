@@ -4,9 +4,6 @@ on:
   push:
     tags:
       - 'v*.*.*'  # 触发条件：版本标签 (v1.0.0, v1.0.1, etc.)
-    branches:
-      - main      # 确保只在主分支上的标签触发
-
 env:
   DEVELOPER_DIR: /Applications/Xcode.app/Contents/Developer
 
