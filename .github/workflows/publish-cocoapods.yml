@@ -71,14 +71,19 @@ jobs:
           echo "Please add your CocoaPods Trunk token to GitHub Secrets"
           exit 1
         fi
-        
-        # 创建 CocoaPods 配置目录
-        mkdir -p ~/.cocoapods
-        
-        # 设置 Trunk token
-        echo "${{ secrets.COCOAPODS_TRUNK_TOKEN }}" > ~/.cocoapods/trunk_token
-        
-        # 验证 token
+
+        # 创建 .netrc 文件进行认证
+        cat > ~/.netrc << EOF
+        machine trunk.cocoapods.org
+          login ${{ github.actor }}
+          password ${{ secrets.COCOAPODS_TRUNK_TOKEN }}
+        EOF
+
+        # 设置 .netrc 文件权限
+        chmod 600 ~/.netrc
+
+        # 验证认证
+        echo "🔍 Verifying CocoaPods Trunk authentication..."
         pod trunk me
         echo "✅ CocoaPods authentication successful"
     
@@ -159,13 +164,14 @@ jobs:
       if: failure()
       run: |
         echo "❌ Publication failed. Cleaning up..."
-        
-        # 清理可能的临时文件
-        rm -f ~/.cocoapods/trunk_token
-        
+
+        # 清理认证文件
+        rm -f ~/.netrc
+
         echo ""
         echo "🔧 Troubleshooting tips:"
         echo "1. Check that the podspec version matches the Git tag"
         echo "2. Ensure COCOAPODS_TRUNK_TOKEN is correctly set in GitHub Secrets"
         echo "3. Verify the podspec passes validation: pod spec lint --allow-warnings"
         echo "4. Check CocoaPods Trunk status: https://status.cocoapods.org/"
+        echo "5. Verify your CocoaPods Trunk registration: pod trunk me"

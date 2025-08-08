@@ -147,14 +147,23 @@ pod spec lint WuKongEasySDK.podspec --allow-warnings --verbose
 ```
 Error: Authentication failed
 ```
+或
+```
+[!] You need to register a session first.
+```
 
 **解决方案**:
-1. 检查 GitHub Secrets 中的 `COCOAPODS_TRUNK_TOKEN`
-2. 重新生成 token:
+1. 使用脚本获取正确的 token:
    ```bash
-   pod trunk register your-email@example.com 'Your Name'
+   ./scripts/get-cocoapods-token.sh
    ```
-3. 更新 GitHub Secret
+2. 检查 GitHub Secrets 中的 `COCOAPODS_TRUNK_TOKEN`
+3. 验证本地认证: `pod trunk me`
+4. 重新注册获取新 token:
+   ```bash
+   pod trunk register your-email@example.com 'Your Name' --description='GitHub Actions'
+   ```
+5. 更新 GitHub Secret
 
 #### 4. 分支限制错误
 

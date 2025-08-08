@@ -33,25 +33,44 @@ pod trunk me
     Description: MacBook Pro
 ```
 
-### 步骤 3: 获取 Token 文件
+### 步骤 3: 获取 Token
 
-CocoaPods Trunk token 通常存储在：
+CocoaPods Trunk 使用 `.netrc` 文件进行认证。注册后，token 信息存储在：
+
 ```bash
-# macOS/Linux
+# 查看 .netrc 文件内容
 cat ~/.netrc
+```
 
+文件内容格式如下：
 ```
 machine trunk.cocoapods.org
-  login xxxx
-  password xxxx
+  login your-email@example.com
+  password your-token-here
 ```
 
-password 后面的值即为 token。
+**获取 Token 的方法：**
 
-如果文件不存在，可以通过以下命令生成新的 session：
-```bash
-pod trunk register your-email@example.com 'Your Name' --description='GitHub Actions'
-```
+1. **使用自动化脚本**（推荐）：
+   ```bash
+   # 运行 token 获取脚本
+   ./scripts/get-cocoapods-token.sh
+   ```
+
+   脚本会自动检查认证状态并提取 token。
+
+2. **手动从 .netrc 文件获取**：
+   ```bash
+   # 查看 .netrc 文件中的 password 字段
+   grep -A2 "machine trunk.cocoapods.org" ~/.netrc | grep password | awk '{print $2}'
+   ```
+
+3. **重新注册获取新 token**：
+   ```bash
+   pod trunk register your-email@example.com 'Your Name' --description='GitHub Actions'
+   ```
+
+   注册成功后，新的 token 会保存到 `~/.netrc` 文件中。
 
 ## 2. 在 GitHub 仓库中设置 Secrets
 
@@ -164,11 +183,20 @@ pod install
 ```
 Error: Authentication failed
 ```
+或
+```
+[!] You need to register a session first.
+```
 
 **解决方案**:
 - 检查 `COCOAPODS_TRUNK_TOKEN` Secret 是否正确设置
 - 确认 token 没有过期
-- 重新生成 token: `pod trunk register your-email@example.com 'Your Name'`
+- 验证本地认证状态: `pod trunk me`
+- 重新注册获取新 token:
+  ```bash
+  pod trunk register your-email@example.com 'Your Name' --description='GitHub Actions'
+  ```
+- 确保 token 是从 `~/.netrc` 文件中的 `password` 字段获取的
 
 #### 2. 版本不匹配
 ```
