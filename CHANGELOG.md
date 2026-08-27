@@ -7,18 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added
-- GitHub Actions workflow for automatic CocoaPods publishing
-- Release automation scripts and documentation
+## [1.0.3] - 2026-08-28
 
-### Changed
-- Updated minimum iOS version to 13.0 for async/await support
-- Updated minimum macOS version to 12.0 for test compatibility
+### Added
+- Pull request CI that runs Swift package tests and CocoaPods linting
 
 ### Fixed
-- Resolved Swift concurrency and Sendable protocol warnings
-- Fixed URLSessionWebSocketTask availability issues
-- Improved error handling in WebSocket connections
+- Aligned device flag wire values with WuKongIM: APP `0`, WEB `1`, and PC/Desktop `2`
+- Qualified the Starscream WebSocket type to avoid a name collision with newer Apple Network SDKs
 
 ## [1.0.0] - 2024-01-07
 
