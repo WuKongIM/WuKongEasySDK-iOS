@@ -90,12 +90,12 @@ public enum ChannelType: Int, CaseIterable, Codable, Sendable {
 
 /// Device flag enum for identifying device types
 public enum DeviceFlag: Int, CaseIterable, Codable {
-    /// Mobile app
-    case app = 1
-    /// Web browser
-    case web = 2
-    /// Desktop application
-    case desktop = 3
+    /// Mobile app (WuKongIM protocol value: 0)
+    case app = 0
+    /// Web browser (WuKongIM protocol value: 1)
+    case web = 1
+    /// Desktop application / PC (WuKongIM protocol value: 2)
+    case desktop = 2
     /// Other device types
     case other = 4
 }
