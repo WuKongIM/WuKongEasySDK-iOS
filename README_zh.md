@@ -31,14 +31,14 @@ WuKongIM 实时消息 iOS/macOS SDK。几分钟内为您的应用添加聊天功
 **Package.swift：**
 ```swift
 dependencies: [
-    .package(url: "https://github.com/WuKongIM/WuKongEasySDK-iOS.git", from: "1.0.0")
+    .package(url: "https://github.com/WuKongIM/WuKongEasySDK-iOS.git", from: "1.0.3")
 ]
 ```
 
 ### CocoaPods
 
 ```ruby
-pod 'WuKongEasySDK', '~> 1.0.0'
+pod 'WuKongEasySDK', '~> 1.0.3'
 ```
 
 ## 快速开始

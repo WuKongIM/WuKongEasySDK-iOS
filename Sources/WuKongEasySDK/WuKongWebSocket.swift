@@ -795,7 +795,7 @@ internal class WuKongWebSocket: NSObject, @unchecked Sendable {
     // MARK: - Connection Properties
 
     /// The underlying Starscream WebSocket
-    private var webSocket: WebSocket?
+    private var webSocket: Starscream.WebSocket?
     /// Current connection state
     private var state: WebSocketState = .disconnected
     /// Flag indicating if disconnect was initiated by user
@@ -916,11 +916,11 @@ internal class WuKongWebSocket: NSObject, @unchecked Sendable {
     // MARK: - Setup Methods
 
     /// Creates and configures a Starscream WebSocket instance
-    private func createWebSocket(url: URL) -> WebSocket {
+    private func createWebSocket(url: URL) -> Starscream.WebSocket {
         var request = URLRequest(url: url)
         request.timeoutInterval = config.connectionTimeout
 
-        let webSocket = WebSocket(request: request)
+        let webSocket = Starscream.WebSocket(request: request)
         webSocket.delegate = self
 
         // Configure WebSocket options
