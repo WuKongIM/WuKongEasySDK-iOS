@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.1] - 2026-09-01
+
+### Fixed
+- Isolated WebSocket transport generations so callbacks from retired sockets cannot alter the active connection
+- Completed failed connection attempts and retired authentication attempts interrupted by disconnect
+- Made the unified macOS and iOS example build and run from one script
+- Rendered received message content and timestamps correctly in the unified example
+
 ## [1.1.0] - 2026-08-31
 
 ### Added
