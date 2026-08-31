@@ -1,118 +1,62 @@
-# WuKongIM Example - Unified iOS/macOS App
+# WuKongEasySDK unified example
 
-This is a unified example application demonstrating the WuKongEasySDK for both iOS and macOS platforms. The app provides a complete chat interface with real-time messaging capabilities.
-
-## Bundle Identifier Fix
-
-This project resolves the bundle identifier error that was occurring when trying to run Swift Package Manager executables in the iOS Simulator:
-
-```
-failure in void __BKSHIDEvent__BUNDLE_IDENTIFIER_FOR_CURRENT_PROCESS_IS_NIL__(NSBundle *__strong) (BKSHIDEvent.m:91) : missing bundleID for main bundle
-```
-
-### Problem
-
-Swift Package Manager executable targets are designed for command-line tools, not iOS apps. When attempting to run them in the iOS Simulator, they lack the proper app bundle structure and metadata (bundle identifier, Info.plist, etc.) that iOS requires.
-
-### Solution
-
-This project uses a proper Xcode project structure instead of SPM executables:
-
-- **Proper iOS App Bundle**: Creates a real iOS app with bundle identifier `com.wukongim.example.ios`
-- **macOS App Bundle**: Creates a macOS app with bundle identifier `com.wukongim.example.macos`
-- **Shared Source Code**: Both targets use the same SwiftUI source files from the `Shared/` directory
-- **Cross-Platform Compatibility**: Handles platform-specific UI differences with conditional compilation
-
-## Features
-
-- **Cross-Platform UI**: Single SwiftUI codebase that works on both iOS and macOS
-- **Real-time Messaging**: Connect to WuKongIM server and send/receive messages
-- **Connection Management**: Easy server connection with status indicators
-- **Message History**: View sent and received messages with timestamps
-- **SDK Event Logs**: Real-time display of SDK events with color-coded log levels
-- **Example Messages**: Pre-built message examples for testing different message types
-
-## Project Structure
-
-```
-WuKongIMExample-Unified/
-├── WuKongIMExample.xcodeproj/     # Xcode project file
-├── Shared/                        # Shared source code
-│   ├── WuKongIMExampleApp.swift  # Main app entry point
-│   ├── ContentView.swift         # Main UI with cross-platform support
-│   ├── Models/
-│   │   ├── ChatManager.swift     # Chat logic and SDK integration
-│   │   └── ChatMessage.swift     # Data models
-│   ├── Assets.xcassets/          # App icons and assets
-│   ├── iOS-Info.plist           # iOS-specific configuration
-│   └── macOS-Info.plist         # macOS-specific configuration
-└── README.md                     # This file
-```
+This SwiftUI example uses one Swift Package executable target on iOS 15+ and macOS 13+. It demonstrates connecting to WuKongIM, sending and receiving messages, disconnecting, and observing SDK events.
 
 ## Requirements
 
-- iOS 15.0+ / macOS 13.0+
-- Xcode 14.0+
-- Swift 5.7+
+- Xcode 14 or newer
+- Swift 5.7 or newer
+- An iOS Simulator runtime when building the iOS variant
+- A running WuKongIM server exposing the EasySDK JSON-RPC WebSocket endpoint
 
-## Building and Running
+## Build and run
 
-### iOS
-
-```bash
-# Build for iOS Simulator
-xcodebuild -project WuKongIMExample.xcodeproj -scheme WuKongIMExample-iOS -destination 'platform=iOS Simulator,name=iPhone 16' build
-
-# Install and run in simulator
-xcrun simctl boot "iPhone 16"
-xcrun simctl install booted "/path/to/WuKongIMExample-iOS.app"
-xcrun simctl launch booted com.wukongim.example.ios
-```
-
-### macOS
+From this directory:
 
 ```bash
-# Build for macOS
-xcodebuild -project WuKongIMExample.xcodeproj -scheme WuKongIMExample-macOS build
+./build.sh macos
+./build.sh macos --run
 
-# Run the macOS app
-open "/path/to/WuKongIMExample-macOS.app"
+./build.sh ios
+./build.sh ios --run
 ```
 
-### Using Xcode
+`./build.sh ios` uses `xcodebuild` to compile the Swift package, then creates an installable simulator app at:
 
-1. Open `WuKongIMExample.xcodeproj` in Xcode
-2. Select either `WuKongIMExample-iOS` or `WuKongIMExample-macOS` scheme
-3. Choose your target device/simulator
-4. Press Cmd+R to build and run
+```text
+.build/ios-simulator/WuKongIMExample-Unified.app
+```
+
+For `ios --run`, boot a simulator first. To target a specific booted simulator or build destination:
+
+```bash
+SIMULATOR_ID=<simulator-udid> \
+IOS_DESTINATION='platform=iOS Simulator,id=<simulator-udid>' \
+./build.sh ios --run
+```
+
+You can also open `Package.swift` directly in Xcode. This repository does not contain an `.xcodeproj`; Swift Package Manager generates the scheme.
 
 ## Configuration
 
-The app connects to a WuKongIM server. Default settings:
-- **Server URL**: `ws://localhost:5200`
-- **User ID**: `testUser`
-- **Token**: `testToken`
+The default fields in the UI are:
 
-You can modify these values in the connection interface when running the app.
+- Server URL: `ws://localhost:5200`
+- User ID: `testUser`
+- Token: `testToken`
+- Target user: `friendUser`
 
-## Cross-Platform Considerations
+Change these values in the app to match your server. The iOS `Info.plist` permits arbitrary transport loads so the development example can connect to a local `ws://` endpoint; production apps should use `wss://` and remove that exception.
 
-The app handles platform differences automatically:
+## Source layout
 
-- **Navigation**: Uses iOS-style navigation bar titles on iOS, standard titles on macOS
-- **Colors**: Uses cross-platform compatible colors instead of iOS-specific system colors
-- **Text Fields**: Handles different TextField API availability across iOS/macOS versions
-- **UI Layout**: Adapts to platform-specific interface guidelines
+```text
+WuKongIMExample-Unified/
+├── Package.swift
+├── Sources/WuKongIMExample-Unified/  # Files compiled by SwiftPM
+├── Shared/iOS-Info.plist              # Simulator app-bundle template
+├── build.sh
+└── README.md
+```
 
-## Dependencies
-
-- **WuKongEasySDK**: Referenced as a local Swift package from the parent directory
-- **SwiftUI**: For cross-platform UI
-- **Foundation**: For basic functionality
-
-## Bundle Identifiers
-
-- **iOS**: `com.wukongim.example.ios`
-- **macOS**: `com.wukongim.example.macos`
-
-These unique bundle identifiers ensure proper app installation and execution on both platforms.
+The package references the SDK at `../../`, so the example always exercises the checked-out WuKongEasySDK source.

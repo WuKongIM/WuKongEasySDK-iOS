@@ -579,6 +579,32 @@ final class LoggingSecurityTests: XCTestCase {
         XCTAssertNil(weakSocket, "The WebSocket must not retain itself while deinitializing")
     }
 
+    func testWebSocketDeinitDoesNotEmitLifecycleDiagnostics() throws {
+        let config = try WuKongConfig(
+            serverUrl: "ws://127.0.0.1:5200",
+            uid: "alice",
+            token: "safe-test-token",
+            autoReconnect: false,
+            enableDebugLogging: true,
+            logLevel: .debug
+        )
+
+        let output = captureStandardOutput {
+            autoreleasepool {
+                let eventManager = WuKongEventManager(config: config)
+                var socket: WuKongWebSocket? = WuKongWebSocket(
+                    config: config,
+                    eventManager: eventManager
+                )
+                withExtendedLifetime(socket) {}
+                socket = nil
+                withExtendedLifetime(eventManager) {}
+            }
+        }
+
+        XCTAssertEqual(output, "", "Deinitialization must not leak diagnostics into later operations: \(output)")
+    }
+
     func testExampleDiagnosticsDoNotInterpolateSensitiveValues() throws {
         let repositoryRoot = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()

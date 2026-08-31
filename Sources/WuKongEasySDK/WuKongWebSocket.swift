@@ -908,7 +908,7 @@ internal class WuKongWebSocket: NSObject, @unchecked Sendable {
         networkMonitor?.pathUpdateHandler = nil
         networkMonitor?.cancel()
         isManualDisconnect = true
-        disconnectInternal()
+        disconnectInternal(emitDisconnectEvent: false, emitDiagnostics: false)
     }
     
     // MARK: - Public API
@@ -1135,8 +1135,13 @@ internal class WuKongWebSocket: NSObject, @unchecked Sendable {
     }
 
     /// Internal method to disconnect and clean up all resources
-    private func disconnectInternal() {
-        logDebug("Initiating WebSocket disconnection and cleanup")
+    private func disconnectInternal(
+        emitDisconnectEvent: Bool = true,
+        emitDiagnostics: Bool = true
+    ) {
+        if emitDiagnostics {
+            logDebug("Initiating WebSocket disconnection and cleanup")
+        }
 
         // Stop all timers
         timerManager.cancelAllTimers()
@@ -1149,7 +1154,7 @@ internal class WuKongWebSocket: NSObject, @unchecked Sendable {
         }
         pendingRequests.removeAll()
 
-        if pendingRequestCount > 0 {
+        if emitDiagnostics, pendingRequestCount > 0 {
             logDebug("Cancelled \(pendingRequestCount) pending requests")
         }
 
@@ -1162,9 +1167,13 @@ internal class WuKongWebSocket: NSObject, @unchecked Sendable {
         state = .disconnected
 
         if previousState != .disconnected {
-            let disconnectInfo = DisconnectInfo(code: WebSocketConstants.normalClosureCode, reason: "Client disconnected")
-            eventManager.emitDisconnect(disconnectInfo)
-            logger.debug(LogMessages.disconnectionCompleted)
+            if emitDisconnectEvent {
+                let disconnectInfo = DisconnectInfo(code: WebSocketConstants.normalClosureCode, reason: "Client disconnected")
+                eventManager.emitDisconnect(disconnectInfo)
+            }
+            if emitDiagnostics {
+                logger.debug(LogMessages.disconnectionCompleted)
+            }
         }
     }
 
