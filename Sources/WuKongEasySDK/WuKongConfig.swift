@@ -60,13 +60,13 @@ public class WuKongConfig {
     
     // MARK: - Logging Settings
 
-    /// Whether to enable debug logging (default: false)
+    /// Master switch for all SDK diagnostic logging (default: false)
     public let enableDebugLogging: Bool
 
-    /// Log level for SDK operations
+    /// Maximum diagnostic verbosity when logging is enabled
     public let logLevel: LogLevel
 
-    /// Whether to enable JSON data logging for debugging (default: true)
+    /// Whether to enable redacted JSON summaries when debug-level logging is enabled (default: true)
     public let enableJsonLogging: Bool
     
     // MARK: - Initialization
@@ -86,9 +86,9 @@ public class WuKongConfig {
     ///   - initialReconnectDelay: Initial reconnection delay in seconds (default: 1)
     ///   - maxReconnectDelay: Maximum reconnection delay in seconds (default: 30)
     ///   - autoReconnect: Enable automatic reconnection (default: true)
-    ///   - enableDebugLogging: Enable debug logging (default: false)
-    ///   - logLevel: Log level (default: .info)
-    ///   - enableJsonLogging: Enable JSON data logging (default: true)
+    ///   - enableDebugLogging: Master switch for SDK diagnostics (default: false)
+    ///   - logLevel: Maximum verbosity when diagnostics are enabled (default: .info)
+    ///   - enableJsonLogging: Enable redacted JSON summaries at debug level (default: true)
     public init(
         serverUrl: String,
         uid: String,
@@ -214,9 +214,9 @@ public class WuKongConfig {
         return URL(string: serverUrl)
     }
     
-    /// Check if debug logging is enabled
+    /// Check whether the master switch and log level both allow debug diagnostics.
     public var isDebugEnabled: Bool {
-        return enableDebugLogging || logLevel == .debug
+        return enableDebugLogging && logLevel.rawValue >= LogLevel.debug.rawValue
     }
 }
 
@@ -266,6 +266,7 @@ public class WuKongConfigBuilder {
     private var autoReconnect: Bool = true
     private var enableDebugLogging: Bool = false
     private var logLevel: LogLevel = .info
+    private var enableJsonLogging: Bool = true
     
     public init() {}
     
@@ -358,6 +359,12 @@ public class WuKongConfigBuilder {
         self.logLevel = level
         return self
     }
+
+    @discardableResult
+    public func enableJsonLogging(_ enabled: Bool) -> WuKongConfigBuilder {
+        self.enableJsonLogging = enabled
+        return self
+    }
     
     public func build() throws -> WuKongConfig {
         return try WuKongConfig(
@@ -375,7 +382,8 @@ public class WuKongConfigBuilder {
             maxReconnectDelay: maxReconnectDelay,
             autoReconnect: autoReconnect,
             enableDebugLogging: enableDebugLogging,
-            logLevel: logLevel
+            logLevel: logLevel,
+            enableJsonLogging: enableJsonLogging
         )
     }
 }

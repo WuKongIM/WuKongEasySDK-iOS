@@ -66,7 +66,7 @@ internal class WuKongEventManager {
             self.cleanupWeakReferences(for: event)
         }
         
-        logDebug("Added listener for event: \(event.rawValue), ID: \(listener.id)")
+        logDebug("Added listener for event: \(event.rawValue)")
         return listener
     }
     
@@ -81,7 +81,7 @@ internal class WuKongEventManager {
             }
         }
         
-        logDebug("Removed listener with ID: \(listener.id)")
+        logDebug("Removed listener")
     }
     
     /// Remove all listeners for a specific event
@@ -168,12 +168,13 @@ internal class WuKongEventManager {
     // MARK: - Logging
     
     private func logDebug(_ message: String) {
-        guard config.logLevel.rawValue >= LogLevel.debug.rawValue else { return }
+        guard config.isDebugEnabled else { return }
         print("[WuKongEasySDK][EventManager][DEBUG] \(message)")
     }
     
     private func logError(_ message: String) {
-        guard config.logLevel.rawValue >= LogLevel.error.rawValue else { return }
+        guard config.enableDebugLogging,
+              config.logLevel.rawValue >= LogLevel.error.rawValue else { return }
         print("[WuKongEasySDK][EventManager][ERROR] \(message)")
     }
 }

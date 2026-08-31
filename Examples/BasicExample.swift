@@ -51,7 +51,7 @@ class BasicExample {
             try await Task.sleep(nanoseconds: 30_000_000_000) // 30 seconds
             
         } catch {
-            print("❌ Error: \(error)")
+            print("❌ SDK example failed")
         }
     }
     
@@ -62,7 +62,6 @@ class BasicExample {
         // Connection events
         connectListener = easySDK.onConnect { result in
             print("✅ Connected successfully!")
-            print("   Server Key: \(result.serverKey)")
             print("   Time Diff: \(result.timeDiff)")
             print("   Reason Code: \(result.reasonCode)")
         }
@@ -70,32 +69,30 @@ class BasicExample {
         disconnectListener = easySDK.onDisconnect { disconnectInfo in
             print("❌ Disconnected from server")
             print("   Code: \(disconnectInfo.code)")
-            print("   Reason: \(disconnectInfo.reason)")
         }
         
         // Message events
         messageListener = easySDK.onMessage { message in
             print("📨 Received message:")
-            print("   From: \(message.fromUid)")
-            print("   Channel: \(message.channelId)")
-            print("   Content: \(message.payload)")
+            print("   Channel Type: \(message.channelType)")
+            print("   Sequence: \(message.messageSeq)")
             print("   Timestamp: \(Date(timeIntervalSince1970: TimeInterval(message.timestamp / 1000)))")
         }
         
         // Error events
         errorListener = easySDK.onError { error in
-            print("⚠️ Error occurred: \(error.localizedDescription)")
+            print("⚠️ SDK operation failed")
             
             if let wkError = error as? WuKongError {
                 switch wkError {
-                case .authFailed(let message):
-                    print("   Authentication failed: \(message)")
-                case .networkError(let message):
-                    print("   Network error: \(message)")
-                case .connectionFailed(let message):
-                    print("   Connection failed: \(message)")
+                case .authFailed:
+                    print("   Authentication failed")
+                case .networkError:
+                    print("   Network error")
+                case .connectionFailed:
+                    print("   Connection failed")
                 default:
-                    print("   Other error: \(wkError)")
+                    print("   SDK error code: \(wkError.code)")
                 }
             }
         }
@@ -110,7 +107,6 @@ class BasicExample {
         // Send acknowledgment events
         easySDK.onSendAck { result in
             print("✅ Message sent successfully:")
-            print("   Message ID: \(result.messageId)")
             print("   Sequence: \(result.messageSeq)")
         }
     }
@@ -144,11 +140,10 @@ class BasicExample {
             )
             
             print("✅ Message queued for sending:")
-            print("   Message ID: \(result.messageId)")
             print("   Sequence: \(result.messageSeq)")
             
         } catch {
-            print("❌ Failed to send message: \(error)")
+            print("❌ Failed to send message")
         }
     }
     
@@ -221,7 +216,7 @@ class AdvancedExample {
             try await Task.sleep(nanoseconds: 60_000_000_000) // 60 seconds
             
         } catch {
-            print("❌ Advanced example error: \(error)")
+            print("❌ Advanced example failed")
         }
     }
     
@@ -231,14 +226,13 @@ class AdvancedExample {
         easySDK.onConnect { result in
             print("🚀 Advanced connection established!")
             print("   Server Version: \(result.serverVersion ?? 0)")
-            print("   Node ID: \(result.nodeId ?? 0)")
         }
         
         easySDK.onMessage { message in
             print("📨 Advanced message received:")
             print("   Channel Type: \(ChannelType(rawValue: message.channelType) ?? .person)")
             print("   Has Topic: \(message.topic != nil)")
-            print("   Stream Info: \(message.streamId ?? "none")")
+            print("   Has Stream: \(message.streamId != nil)")
         }
         
         easySDK.onError { error in
@@ -246,7 +240,6 @@ class AdvancedExample {
             if let wkError = error as? WuKongError {
                 print("   Error Code: \(wkError.code)")
                 print("   Is Recoverable: \(wkError.isRecoverable)")
-                print("   Recovery Suggestion: \(wkError.recoverySuggestion ?? "none")")
             }
         }
     }
@@ -302,14 +295,15 @@ class AdvancedExample {
                     payload: payload
                 )
 
-                print("📤 Sent to \(channelId): \(result.messageId)")
-                print("   Payload: \(payload.toDictionary())")
+                print("📤 Message sent")
+                print("   Channel Type: \(channelType)")
+                print("   Sequence: \(result.messageSeq)")
 
                 // Wait between messages
                 try await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
 
             } catch {
-                print("❌ Failed to send to \(channelId): \(error)")
+                print("❌ Failed to send message")
             }
         }
     }

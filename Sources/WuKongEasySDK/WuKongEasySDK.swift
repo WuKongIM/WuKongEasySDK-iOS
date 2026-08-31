@@ -38,7 +38,7 @@ public class WuKongEasySDK {
         self.eventManager = WuKongEventManager(config: config)
         self.webSocket = WuKongWebSocket(config: config, eventManager: eventManager)
         
-        logInfo("WuKongEasySDK initialized with server: \(config.serverUrl)")
+        logInfo("WuKongEasySDK initialized")
     }
     
     // MARK: - Connection Management
@@ -74,9 +74,9 @@ public class WuKongEasySDK {
         
         let payloadDict = payload.toDictionary()
         
-        logDebug("Sending message to channel: \(channelId), type: \(channelType)")
+        logDebug("Sending message, channel type: \(channelType)")
         let result = try await webSocket.send(channelId: channelId, channelType: channelType, payload: payloadDict)
-        logDebug("Message sent successfully: \(result.messageId)")
+        logDebug("Message sent successfully")
         
         return result
     }
@@ -96,9 +96,9 @@ public class WuKongEasySDK {
         
         let payloadDict = payload.toDictionary()
         
-        logDebug("Sending message with options to channel: \(channelId), type: \(channelType)")
+        logDebug("Sending message with options, channel type: \(channelType)")
         let result = try await webSocket.send(channelId: channelId, channelType: channelType, payload: payloadDict, options: options)
-        logDebug("Message sent successfully: \(result.messageId)")
+        logDebug("Message sent successfully")
         
         return result
     }
@@ -173,7 +173,7 @@ public class WuKongEasySDK {
     /// Remove a specific event listener
     /// - Parameter listener: The listener to remove
     public func removeListener(_ listener: EventListener) {
-        logDebug("Removing event listener: \(listener.id)")
+        logDebug("Removing event listener")
         eventManager.removeListener(listener)
     }
     
@@ -208,17 +208,19 @@ public class WuKongEasySDK {
     // MARK: - Logging
     
     private func logDebug(_ message: String) {
-        guard config.logLevel.rawValue >= LogLevel.debug.rawValue else { return }
+        guard config.isDebugEnabled else { return }
         print("[WuKongEasySDK][DEBUG] \(message)")
     }
     
     private func logInfo(_ message: String) {
-        guard config.logLevel.rawValue >= LogLevel.info.rawValue else { return }
+        guard config.enableDebugLogging,
+              config.logLevel.rawValue >= LogLevel.info.rawValue else { return }
         print("[WuKongEasySDK][INFO] \(message)")
     }
     
     private func logError(_ message: String) {
-        guard config.logLevel.rawValue >= LogLevel.error.rawValue else { return }
+        guard config.enableDebugLogging,
+              config.logLevel.rawValue >= LogLevel.error.rawValue else { return }
         print("[WuKongEasySDK][ERROR] \(message)")
     }
 }
