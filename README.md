@@ -31,14 +31,14 @@ iOS/macOS SDK for WuKongIM real-time messaging. Add chat functionality to your a
 **Package.swift:**
 ```swift
 dependencies: [
-    .package(url: "https://github.com/WuKongIM/WuKongEasySDK-iOS.git", from: "1.0.3")
+    .package(url: "https://github.com/WuKongIM/WuKongEasySDK-iOS.git", from: "1.1.0")
 ]
 ```
 
 ### CocoaPods
 
 ```ruby
-pod 'WuKongEasySDK', '~> 1.0.3'
+pod 'WuKongEasySDK', '~> 1.1.0'
 ```
 
 ## Quick Start
@@ -149,11 +149,6 @@ let sdk = try WuKongEasySDK.create { builder in
 require `.debug` and `enableJsonLogging`; they contain only redacted JSON-RPC
 envelope data. Params, payloads, results, errors, malformed input, connection
 URLs, disconnect reasons, unknown methods, and request IDs are never echoed.
-
-> **Unreleased API:** `WuKongConfigBuilder.enableJsonLogging(_:)` is available
-> on `main` and will ship in the next release after `1.0.3`. Applications pinned
-> to `1.0.3` should omit that builder call; its direct `WuKongConfig` initializer
-> already accepts `enableJsonLogging`.
 
 ### Error Handling
 
