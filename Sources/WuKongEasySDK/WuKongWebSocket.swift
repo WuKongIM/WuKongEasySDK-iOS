@@ -879,6 +879,10 @@ internal class WuKongWebSocket: NSObject, @unchecked Sendable {
 
     /// Connection completion handler for async connection
     private var connectionCompletion: ((Result<Void, Error>) -> Void)?
+    /// Monotonically identifies authentication callbacks owned by the active transport.
+    private var connectionGeneration = 0
+    /// Generation whose authentication result may complete the current connect operation.
+    private var activeConnectionGeneration: Int?
 
     // MARK: - Ping/Pong Management
 
@@ -1068,6 +1072,8 @@ internal class WuKongWebSocket: NSObject, @unchecked Sendable {
 
         // Store completion before starting the transport so even an immediate
         // terminal callback can finish the public connect operation.
+        connectionGeneration += 1
+        activeConnectionGeneration = connectionGeneration
         self.connectionCompletion = completion
 
         // Create and connect WebSocket
@@ -1075,12 +1081,15 @@ internal class WuKongWebSocket: NSObject, @unchecked Sendable {
         webSocket?.connect()
     }
     
-    /// Authenticates with the WuKong server using configured credentials
-    /// - Parameter completion: Callback with authentication result
-    private func authenticate(completion: @escaping (Result<Void, Error>) -> Void) {
+    /// Authenticates with the WuKong server for one connection generation.
+    /// - Parameter generation: Generation allowed to complete the public connect operation.
+    private func authenticate(generation: Int) {
         // Validate connection state
         guard state == .connected else {
-            completion(.failure(WuKongError.connectionFailed("Cannot authenticate - not connected")))
+            handleAuthenticationFailure(
+                error: WuKongError.connectionFailed("Cannot authenticate - not connected"),
+                generation: generation
+            )
             return
         }
 
@@ -1098,11 +1107,16 @@ internal class WuKongWebSocket: NSObject, @unchecked Sendable {
 
         // Send authentication request
         sendRequest(method: JSONRPCMethod.connect, params: authParams, timeout: config.requestTimeout) { [weak self] result in
+            guard let self = self,
+                  self.activeConnectionGeneration == generation else {
+                return
+            }
+
             switch result {
             case .success(let response):
-                self?.handleAuthenticationSuccess(response: response, completion: completion)
+                self.handleAuthenticationSuccess(response: response, generation: generation)
             case .failure(let error):
-                self?.handleAuthenticationFailure(error: error, completion: completion)
+                self.handleAuthenticationFailure(error: error, generation: generation)
             }
         }
     }
@@ -1110,13 +1124,21 @@ internal class WuKongWebSocket: NSObject, @unchecked Sendable {
     /// Handles successful authentication response
     /// - Parameters:
     ///   - response: Server response containing connection details
-    ///   - completion: Callback to invoke with final result
-    private func handleAuthenticationSuccess(response: [String: Any], completion: @escaping (Result<Void, Error>) -> Void) {
+    ///   - generation: Generation that owns the authentication request
+    private func handleAuthenticationSuccess(response: [String: Any], generation: Int) {
+        guard activeConnectionGeneration == generation,
+              let completion = connectionCompletion else {
+            return
+        }
+
         do {
             // Parse server response into structured result
             let connectResult = try parseConnectResult(from: response)
 
-            // Update state and reset reconnection counter
+            // Detach the public completion before callbacks can re-enter.
+            connectionCompletion = nil
+
+            // Update state and reset reconnection counter.
             state = .authenticated
             reconnectAttempts = 0
 
@@ -1132,21 +1154,29 @@ internal class WuKongWebSocket: NSObject, @unchecked Sendable {
             logDebug("Ping timer started with interval: \(config.pingInterval)s")
         } catch {
             // If parsing fails, treat as authentication failure
-            handleAuthenticationFailure(error: error, completion: completion)
+            handleAuthenticationFailure(error: error, generation: generation)
         }
     }
 
     /// Handles authentication failure
     /// - Parameters:
     ///   - error: The authentication error
-    ///   - completion: Callback to invoke with failure result
-    private func handleAuthenticationFailure(error: Error, completion: @escaping (Result<Void, Error>) -> Void) {
+    ///   - generation: Generation that owns the authentication request
+    private func handleAuthenticationFailure(error: Error, generation: Int) {
+        guard activeConnectionGeneration == generation else {
+            return
+        }
+
+        let completion = connectionCompletion
+        connectionCompletion = nil
+        activeConnectionGeneration = nil
+
         logger.error(LogMessages.authenticationFailed, cause: error)
 
         // Reset state and notify of failure
         state = .disconnected
         eventManager.emitError(error)
-        completion(.failure(error))
+        completion?(.failure(error))
 
         // Clean up connection
         disconnectInternal()
@@ -1169,6 +1199,7 @@ internal class WuKongWebSocket: NSObject, @unchecked Sendable {
         let requestsToCancel = Array(pendingRequests.values)
         webSocket = nil
         connectionCompletion = nil
+        activeConnectionGeneration = nil
         pendingRequests.removeAll()
         state = .disconnected
         currentPingRequestId = nil
@@ -1598,6 +1629,10 @@ internal class WuKongWebSocket: NSObject, @unchecked Sendable {
     }
 
     private func handlePingFailure(_ error: Error) {
+        guard state == .authenticated else {
+            return
+        }
+
         logger.error(LogMessages.pingFailed, cause: error)
         currentPingRequestId = nil
 
@@ -1825,9 +1860,9 @@ extension WuKongWebSocket: WebSocketDelegate {
         state = .connected
 
         // Call the stored completion handler for authentication
-        if let completion = connectionCompletion {
-            authenticate(completion: completion)
-            connectionCompletion = nil
+        if let generation = activeConnectionGeneration,
+           connectionCompletion != nil {
+            authenticate(generation: generation)
         }
     }
 
@@ -1837,7 +1872,7 @@ extension WuKongWebSocket: WebSocketDelegate {
 
         webSocket = nil
         state = .disconnected
-        failPendingConnection(with: .serverDisconnected(Int(code), reasonString))
+        failActiveConnection(with: .serverDisconnected(Int(code), reasonString))
 
         let disconnectInfo = createDisconnectInfo(code: Int(code), reason: reasonString)
         eventManager.emitDisconnect(disconnectInfo)
@@ -1873,30 +1908,32 @@ extension WuKongWebSocket: WebSocketDelegate {
         logger.debug("WebSocket connection cancelled")
         webSocket = nil
         state = .disconnected
-        failPendingConnection(with: .cancelled)
+        failActiveConnection(with: .cancelled)
     }
 
     private func handleWebSocketError(_ error: Error?) {
-        guard let error = error else { return }
-
+        let shouldReconnect = !isManualDisconnect && state != .disconnected
         webSocket = nil
-        logger.error(LogMessages.webSocketError, cause: error)
+        state = .disconnected
 
         // Convert to WuKongError and emit
         let wukongError: WuKongError
         if let wsError = error as? WSError {
+            logger.error(LogMessages.webSocketError, cause: wsError)
             wukongError = WuKongError.from(wsError: wsError)
-        } else {
+        } else if let error = error {
+            logger.error(LogMessages.webSocketError, cause: error)
             wukongError = WuKongError.networkError(error.localizedDescription)
+        } else {
+            logger.error(LogMessages.webSocketError)
+            wukongError = WuKongError.connectionFailed("Unknown WebSocket error")
         }
 
+        failActiveConnection(with: wukongError)
         eventManager.emitError(wukongError)
 
-        failPendingConnection(with: wukongError)
-
         // Trigger reconnection if appropriate
-        if !isManualDisconnect && state != .disconnected {
-            state = .disconnected
+        if shouldReconnect {
             tryReconnect()
         }
     }
@@ -1905,7 +1942,7 @@ extension WuKongWebSocket: WebSocketDelegate {
         logger.debug("WebSocket peer closed connection")
         webSocket = nil
         state = .disconnected
-        failPendingConnection(
+        failActiveConnection(
             with: .connectionFailed("WebSocket peer closed before connection completed")
         )
 
@@ -1914,10 +1951,21 @@ extension WuKongWebSocket: WebSocketDelegate {
         }
     }
 
-    /// Completes and clears a pending public connect before terminal callbacks can reconnect.
-    private func failPendingConnection(with error: WuKongError) {
-        let completion = connectionCompletion
+    /// Retires all work owned by a terminal transport before callbacks can reconnect.
+    private func failActiveConnection(with error: WuKongError) {
+        let connectionToFail = connectionCompletion
+        let requestsToFail = Array(pendingRequests.values)
+
         connectionCompletion = nil
-        completion?(.failure(error))
+        activeConnectionGeneration = nil
+        pendingRequests.removeAll()
+        currentPingRequestId = nil
+        timerManager.cancelAllTimers()
+
+        connectionToFail?(.failure(error))
+        for request in requestsToFail {
+            request.complete()
+            request.reject(error)
+        }
     }
 }

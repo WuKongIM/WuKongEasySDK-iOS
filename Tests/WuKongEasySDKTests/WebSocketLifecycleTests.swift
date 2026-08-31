@@ -84,30 +84,75 @@ final class WebSocketLifecycleTests: XCTestCase {
         wait(for: [connectCompleted], timeout: 1)
     }
 
-    func testTransportDisconnectWhileConnectingCompletesThePendingConnect() {
-        let connectStarted = expectation(description: "transport connect started")
+    func testTerminalTransportEventsWhileConnectingCompleteThePendingConnect() {
+        assertTransportTerminationCompletesPendingConnect(
+            label: "server disconnect",
+            event: .disconnected("server unavailable", 1006),
+            expectedError: .serverDisconnected(1006, "server unavailable")
+        )
+        assertTransportTerminationCompletesPendingConnect(
+            label: "cancellation",
+            event: .cancelled,
+            expectedError: .cancelled
+        )
+        assertTransportTerminationCompletesPendingConnect(
+            label: "peer close",
+            event: .peerClosed,
+            expectedError: .connectionFailed("WebSocket peer closed before connection completed")
+        )
+        assertTransportTerminationCompletesPendingConnect(
+            label: "unspecified transport error",
+            event: .error(nil),
+            expectedError: .connectionFailed("Unknown WebSocket error")
+        )
+    }
+
+    func testTransportDisconnectWhileAuthenticatingCompletesThePendingConnect() {
+        let authenticationStarted = expectation(description: "authentication request sent")
         let connectCompleted = expectation(description: "connect completed with server disconnect")
-        let transport = TestManagedWebSocketClient(autoOpen: false)
-        transport.onConnect = {
-            connectStarted.fulfill()
+        let replacementConnected = expectation(description: "replacement connection authenticated")
+        let transport = TestManagedWebSocketClient(autoOpen: true)
+        let replacement = TestManagedWebSocketClient(autoOpen: true, autoAuthenticate: true)
+        transport.onAuthenticationRequest = {
+            authenticationStarted.fulfill()
         }
-        let socket = makeLifecycleSocket(transports: [transport])
+        let socket = makeLifecycleSocket(
+            transports: [transport, replacement],
+            requestTimeout: 0.05
+        )
 
         Task {
             do {
                 try await socket.connect()
-                XCTFail("transport disconnect unexpectedly allowed connect to succeed")
+                XCTFail("transport disconnect unexpectedly allowed authentication to succeed")
+                return
             } catch let error as WuKongError {
-                XCTAssertEqual(error, .serverDisconnected(1006, "server unavailable"))
+                XCTAssertEqual(error, .serverDisconnected(1006, "authentication interrupted"))
                 connectCompleted.fulfill()
             } catch {
                 XCTFail("transport disconnect returned the wrong error: \(error)")
+                return
+            }
+
+            do {
+                try await socket.connect()
+                replacementConnected.fulfill()
+            } catch {
+                XCTFail("replacement connection failed: \(error)")
             }
         }
 
-        wait(for: [connectStarted], timeout: 1)
-        transport.emit(.disconnected("server unavailable", 1006))
+        wait(for: [authenticationStarted], timeout: 1)
+        transport.emit(.disconnected("authentication interrupted", 1006))
         wait(for: [connectCompleted], timeout: 1)
+        wait(for: [replacementConnected], timeout: 1)
+
+        let staleTimeoutElapsed = expectation(description: "retired authentication timeout elapsed")
+        DispatchQueue.global().asyncAfter(deadline: .now() + 0.1) {
+            staleTimeoutElapsed.fulfill()
+        }
+        wait(for: [staleTimeoutElapsed], timeout: 1)
+        XCTAssertTrue(socket.isConnected, "retired authentication work disconnected its replacement")
     }
 
     func testRetiredTransportCannotDisconnectItsReplacement() async throws {
@@ -137,13 +182,14 @@ final class WebSocketLifecycleTests: XCTestCase {
     }
 
     private func makeLifecycleSocket(
-        transports: [TestManagedWebSocketClient]
+        transports: [TestManagedWebSocketClient],
+        requestTimeout: TimeInterval = 1
     ) -> WuKongWebSocket {
         let config = try! WuKongConfig(
             serverUrl: "ws://127.0.0.1:5200",
             uid: "lifecycle-test",
             token: "test-token",
-            requestTimeout: 1,
+            requestTimeout: requestTimeout,
             pingInterval: 60,
             maxReconnectAttempts: 0,
             autoReconnect: false
@@ -155,6 +201,38 @@ final class WebSocketLifecycleTests: XCTestCase {
             eventManager: eventManager,
             webSocketFactory: factory.make
         )
+    }
+
+    private func assertTransportTerminationCompletesPendingConnect(
+        label: String,
+        event: WebSocketEvent,
+        expectedError: WuKongError,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        let connectStarted = expectation(description: "\(label) transport connect started")
+        let connectCompleted = expectation(description: "\(label) completed pending connect")
+        let transport = TestManagedWebSocketClient(autoOpen: false)
+        transport.onConnect = {
+            connectStarted.fulfill()
+        }
+        let socket = makeLifecycleSocket(transports: [transport])
+
+        Task {
+            do {
+                try await socket.connect()
+                XCTFail("\(label) unexpectedly allowed connect to succeed", file: file, line: line)
+            } catch let error as WuKongError {
+                XCTAssertEqual(error, expectedError, file: file, line: line)
+                connectCompleted.fulfill()
+            } catch {
+                XCTFail("\(label) returned the wrong error: \(error)", file: file, line: line)
+            }
+        }
+
+        wait(for: [connectStarted], timeout: 1)
+        transport.emit(event)
+        wait(for: [connectCompleted], timeout: 1)
     }
 
     private func runnableExampleSourceRoot() -> URL {
@@ -188,6 +266,7 @@ private final class TestManagedWebSocketClient: ManagedWebSocketClient {
     var callbackQueue = DispatchQueue.main
     var onConnect: (() -> Void)?
     var onDisconnect: (() -> Void)?
+    var onAuthenticationRequest: (() -> Void)?
 
     private let autoOpen: Bool
     private let autoAuthenticate: Bool
@@ -241,10 +320,14 @@ private final class TestManagedWebSocketClient: ManagedWebSocketClient {
     }
 
     private func respondToAuthentication(in data: Data) {
-        guard autoAuthenticate,
-              let request = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+        guard let request = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               request["method"] as? String == "connect",
               let id = request["id"] as? String else {
+            return
+        }
+        onAuthenticationRequest?()
+
+        guard autoAuthenticate else {
             return
         }
 
