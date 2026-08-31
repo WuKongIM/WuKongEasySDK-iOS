@@ -1066,12 +1066,13 @@ internal class WuKongWebSocket: NSObject, @unchecked Sendable {
         state = .connecting
         isManualDisconnect = false
 
+        // Store completion before starting the transport so even an immediate
+        // terminal callback can finish the public connect operation.
+        self.connectionCompletion = completion
+
         // Create and connect WebSocket
         webSocket = createWebSocket(url: url)
         webSocket?.connect()
-
-        // Store completion handler for use in delegate methods
-        self.connectionCompletion = completion
     }
     
     /// Authenticates with the WuKong server using configured credentials
@@ -1835,11 +1836,11 @@ extension WuKongWebSocket: WebSocketDelegate {
         logger.debug(LogMessages.webSocketClosed, Int(code))
 
         webSocket = nil
+        state = .disconnected
+        failPendingConnection(with: .serverDisconnected(Int(code), reasonString))
+
         let disconnectInfo = createDisconnectInfo(code: Int(code), reason: reasonString)
         eventManager.emitDisconnect(disconnectInfo)
-
-        // Clear connection state
-        state = .disconnected
 
         // Handle reconnection if not manually disconnected
         if !isManualDisconnect {
@@ -1872,6 +1873,7 @@ extension WuKongWebSocket: WebSocketDelegate {
         logger.debug("WebSocket connection cancelled")
         webSocket = nil
         state = .disconnected
+        failPendingConnection(with: .cancelled)
     }
 
     private func handleWebSocketError(_ error: Error?) {
@@ -1890,11 +1892,7 @@ extension WuKongWebSocket: WebSocketDelegate {
 
         eventManager.emitError(wukongError)
 
-        // Handle connection failure
-        if let completion = connectionCompletion {
-            completion(.failure(wukongError))
-            connectionCompletion = nil
-        }
+        failPendingConnection(with: wukongError)
 
         // Trigger reconnection if appropriate
         if !isManualDisconnect && state != .disconnected {
@@ -1907,9 +1905,19 @@ extension WuKongWebSocket: WebSocketDelegate {
         logger.debug("WebSocket peer closed connection")
         webSocket = nil
         state = .disconnected
+        failPendingConnection(
+            with: .connectionFailed("WebSocket peer closed before connection completed")
+        )
 
         if !isManualDisconnect {
             tryReconnect()
         }
+    }
+
+    /// Completes and clears a pending public connect before terminal callbacks can reconnect.
+    private func failPendingConnection(with error: WuKongError) {
+        let completion = connectionCompletion
+        connectionCompletion = nil
+        completion?(.failure(error))
     }
 }

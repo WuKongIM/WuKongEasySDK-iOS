@@ -84,6 +84,32 @@ final class WebSocketLifecycleTests: XCTestCase {
         wait(for: [connectCompleted], timeout: 1)
     }
 
+    func testTransportDisconnectWhileConnectingCompletesThePendingConnect() {
+        let connectStarted = expectation(description: "transport connect started")
+        let connectCompleted = expectation(description: "connect completed with server disconnect")
+        let transport = TestManagedWebSocketClient(autoOpen: false)
+        transport.onConnect = {
+            connectStarted.fulfill()
+        }
+        let socket = makeLifecycleSocket(transports: [transport])
+
+        Task {
+            do {
+                try await socket.connect()
+                XCTFail("transport disconnect unexpectedly allowed connect to succeed")
+            } catch let error as WuKongError {
+                XCTAssertEqual(error, .serverDisconnected(1006, "server unavailable"))
+                connectCompleted.fulfill()
+            } catch {
+                XCTFail("transport disconnect returned the wrong error: \(error)")
+            }
+        }
+
+        wait(for: [connectStarted], timeout: 1)
+        transport.emit(.disconnected("server unavailable", 1006))
+        wait(for: [connectCompleted], timeout: 1)
+    }
+
     func testRetiredTransportCannotDisconnectItsReplacement() async throws {
         let firstDisconnected = expectation(description: "first transport disconnected")
         let first = TestManagedWebSocketClient(autoOpen: true, autoAuthenticate: true)
@@ -97,7 +123,7 @@ final class WebSocketLifecycleTests: XCTestCase {
         XCTAssertTrue(socket.isConnected)
 
         socket.disconnect()
-        await fulfillment(of: [firstDisconnected], timeout: 1)
+        XCTAssertEqual(XCTWaiter.wait(for: [firstDisconnected], timeout: 1), .completed)
         XCTAssertFalse(socket.isConnected)
 
         try await socket.connect()
