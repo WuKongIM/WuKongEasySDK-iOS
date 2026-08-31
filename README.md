@@ -31,14 +31,14 @@ iOS/macOS SDK for WuKongIM real-time messaging. Add chat functionality to your a
 **Package.swift:**
 ```swift
 dependencies: [
-    .package(url: "https://github.com/WuKongIM/WuKongEasySDK-iOS.git", from: "1.0.4")
+    .package(url: "https://github.com/WuKongIM/WuKongEasySDK-iOS.git", from: "1.1.0")
 ]
 ```
 
 ### CocoaPods
 
 ```ruby
-pod 'WuKongEasySDK', '~> 1.0.4'
+pod 'WuKongEasySDK', '~> 1.1.0'
 ```
 
 ## Quick Start
