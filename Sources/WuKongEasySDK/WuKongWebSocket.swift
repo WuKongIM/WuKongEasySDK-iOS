@@ -31,7 +31,6 @@ private enum WebSocketConstants {
     /// JSON logging constants
     static let maxJsonLogLength = 2000
     static let tokenMaskString = "***MASKED***"
-    static let sensitiveFields = ["token", "password", "secret", "key"]
 }
 
 /// JSON-RPC method names
@@ -43,6 +42,11 @@ internal enum JSONRPCMethod: String, CaseIterable {
     case recv = "recv"
     case recvack = "recvack"
     case disconnect = "disconnect"
+
+    static func safeLogName(for rawMethod: String?) -> String? {
+        guard let rawMethod else { return nil }
+        return JSONRPCMethod(rawValue: rawMethod)?.rawValue ?? "unknown"
+    }
 }
 
 /// Error messages for consistent error handling
@@ -63,25 +67,25 @@ private enum ErrorMessages {
 /// Log message templates for consistent logging
 private enum LogMessages {
     static let networkAvailable = "Network became available - attempting reconnection"
-    static let initiatingConnection = "Initiating connection to %@"
+    static let initiatingConnection = "Initiating connection"
     static let startingAuthentication = "Starting authentication process"
     static let authenticationSuccessful = "Authentication successful - connection fully established"
-    static let authenticationFailed = "Authentication failed: %@"
+    static let authenticationFailed = "Authentication failed"
     static let disconnectionInitiated = "Initiating WebSocket disconnection and cleanup"
     static let cancelledRequests = "Cancelled %d pending requests"
     static let disconnectionCompleted = "WebSocket disconnection completed"
-    static let sendingMessage = "Sending message to channel %@ (type: %@)"
-    static let messageSentSuccessfully = "Message sent successfully - ID: %@, Seq: %lld"
-    static let failedToParseResult = "Failed to parse send result: %@"
-    static let failedToSendMessage = "Failed to send message: %@"
-    static let sentJsonRpcRequest = "Sent JSON-RPC request: %@ (ID: %@)"
-    static let failedToSendNotification = "Failed to send notification '%@': %@"
+    static let sendingMessage = "Sending message (channel type: %@)"
+    static let messageSentSuccessfully = "Message sent successfully - Seq: %lld"
+    static let failedToParseResult = "Failed to parse send result"
+    static let failedToSendMessage = "Failed to send message"
+    static let sentJsonRpcRequest = "Sent JSON-RPC request: %@"
+    static let failedToSendNotification = "Failed to send notification"
     static let sentJsonRpcNotification = "Sent JSON-RPC notification: %@"
-    static let failedToEncodeNotification = "Failed to encode notification '%@': %@"
+    static let failedToEncodeNotification = "Failed to encode notification"
     static let receivedNotification = "Received notification: %@"
     static let unhandledNotificationMethod = "Unhandled notification method: %@"
-    static let serverInitiatedDisconnect = "Server initiated disconnect: %@"
-    static let webSocketError = "WebSocket error: %@"
+    static let serverInitiatedDisconnect = "Server initiated disconnect"
+    static let webSocketError = "WebSocket error"
     static let pingTimerFiredNotAuthenticated = "Ping timer fired but not authenticated - stopping timer"
     static let pingTimerFiredNotRunning = "Ping timer fired but WebSocket not running - stopping timer"
     static let startedPingTimer = "Started ping timer with interval: %.1fs"
@@ -90,25 +94,25 @@ private enum LogMessages {
     static let skippingPingNotRunning = "Skipping ping - WebSocket not running"
     static let sendingPingRequest = "Sending ping request (timeout: %.1fs)"
     static let pingSuccessful = "Ping successful - pong received"
-    static let pingFailed = "Ping failed or timed out: %@"
+    static let pingFailed = "Ping failed or timed out"
     static let initiatingReconnection = "Initiating reconnection due to ping failure"
-    static let failedToSendPingRequest = "Failed to send ping request: %@"
-    static let sentPingRequest = "Sent ping request with ID: %@"
-    static let failedToEncodePingRequest = "Failed to encode ping request: %@"
+    static let failedToSendPingRequest = "Failed to send ping request"
+    static let sentPingRequest = "Sent ping request"
+    static let failedToEncodePingRequest = "Failed to encode ping request"
     static let pongReceived = "Pong notification received from server"
-    static let resolvedPingRequest = "Resolved ping request %@ with pong notification"
+    static let resolvedPingRequest = "Resolved ping request with pong notification"
     static let pongWithoutPendingPing = "Received pong notification but no pending ping request found"
     static let attemptingReconnect = "Attempting reconnect %d/%d in %.1fs"
     static let reconnectionSuccessful = "Reconnection successful"
-    static let reconnectionFailed = "Reconnection failed: %@"
+    static let reconnectionFailed = "Reconnection failed"
     static let webSocketOpened = "WebSocket connection opened"
-    static let webSocketClosed = "WebSocket connection closed with code: %d, reason: %@"
+    static let webSocketClosed = "WebSocket connection closed with code: %d"
 
     // JSON Data Logging Messages
     static let jsonDataSent = "📤 SENT %@ | %@"
     static let jsonDataReceived = "📥 RECEIVED %@ | %@"
     static let jsonDataTruncated = " ...(truncated, total: %d chars)"
-    static let jsonDataMalformed = "⚠️ Malformed JSON data: %@"
+    static let jsonDataMalformed = "⚠️ Malformed JSON data (%d bytes)"
 }
 
 // MARK: - JSON-RPC Protocol Support
@@ -568,14 +572,25 @@ internal class TimerManager {
 /// Manages consistent logging with formatting and level checking
 internal class LogManager {
     private let logLevel: LogLevel
+    private let loggingEnabled: Bool
     private let component: String
     private let enableJsonLogging: Bool
+    private let sensitiveValues: [String]
     private weak var eventManager: WuKongEventManager?
 
-    init(logLevel: LogLevel, component: String = "WebSocket", enableJsonLogging: Bool = true, eventManager: WuKongEventManager? = nil) {
+    init(
+        logLevel: LogLevel,
+        loggingEnabled: Bool,
+        component: String = "WebSocket",
+        enableJsonLogging: Bool = true,
+        sensitiveValues: [String] = [],
+        eventManager: WuKongEventManager? = nil
+    ) {
         self.logLevel = logLevel
+        self.loggingEnabled = loggingEnabled
         self.component = component
         self.enableJsonLogging = enableJsonLogging
+        self.sensitiveValues = sensitiveValues.filter { !$0.isEmpty }
         self.eventManager = eventManager
     }
 
@@ -584,8 +599,9 @@ internal class LogManager {
     ///   - template: Message template with format specifiers
     ///   - args: Arguments for string formatting
     func debug(_ template: String, _ args: CVarArg...) {
-        guard logLevel.rawValue >= LogLevel.debug.rawValue else { return }
-        let message = String(format: template, arguments: args)
+        guard loggingEnabled,
+              logLevel.rawValue >= LogLevel.debug.rawValue else { return }
+        let message = redactSensitiveValues(in: String(format: template, arguments: args))
         let timestamp = DateFormatter.logTimestamp.string(from: Date())
         print("[\(timestamp)][WuKongEasySDK][\(component)][DEBUG] \(message)")
     }
@@ -595,10 +611,29 @@ internal class LogManager {
     ///   - template: Message template with format specifiers
     ///   - args: Arguments for string formatting
     func error(_ template: String, _ args: CVarArg...) {
-        guard logLevel.rawValue >= LogLevel.error.rawValue else { return }
-        let message = String(format: template, arguments: args)
+        guard loggingEnabled,
+              logLevel.rawValue >= LogLevel.error.rawValue else { return }
+        let message = redactSensitiveValues(in: String(format: template, arguments: args))
         let timestamp = DateFormatter.logTimestamp.string(from: Date())
         print("[\(timestamp)][WuKongEasySDK][\(component)][ERROR] \(message)")
+    }
+
+    /// Logs an error category without serializing an untrusted error description.
+    /// Error descriptions may contain server responses, credentials, or payloads.
+    func error(_ category: String, cause: Error) {
+        guard loggingEnabled,
+              logLevel.rawValue >= LogLevel.error.rawValue else { return }
+
+        let errorType = String(describing: type(of: cause))
+        let errorCode: Int
+        if let wuKongError = cause as? WuKongError {
+            errorCode = wuKongError.code
+        } else {
+            errorCode = (cause as NSError).code
+        }
+
+        let timestamp = DateFormatter.logTimestamp.string(from: Date())
+        print("[\(timestamp)][WuKongEasySDK][\(component)][ERROR] \(category) [type=\(errorType), code=\(errorCode)]")
     }
 
     /// Logs JSON data with proper formatting and masking
@@ -615,13 +650,21 @@ internal class LogManager {
         method: String? = nil,
         requestId: String? = nil
     ) {
-        // guard enableJsonLogging && logLevel.rawValue >= LogLevel.debug.rawValue else { return }
+        guard enableJsonLogging,
+              loggingEnabled,
+              logLevel.rawValue >= LogLevel.debug.rawValue else { return }
 
         do {
             // Parse and format JSON
             let jsonObject = try JSONSerialization.jsonObject(with: data, options: [])
-            let maskedJsonObject = maskSensitiveData(jsonObject)
-            let prettyData = try JSONSerialization.data(withJSONObject: maskedJsonObject, options: [.prettyPrinted, .sortedKeys])
+            let redactedSummary = createRedactedJsonSummary(
+                from: jsonObject,
+                type: type,
+                method: method,
+                requestId: requestId,
+                byteLength: data.count
+            )
+            let prettyData = try JSONSerialization.data(withJSONObject: redactedSummary, options: [.prettyPrinted, .sortedKeys])
 
             var jsonString = String(data: prettyData, encoding: .utf8) ?? "Invalid UTF-8"
             let originalLength = jsonString.count
@@ -647,8 +690,8 @@ internal class LogManager {
             let logEvent = JSONDataLogEvent(
                 direction: direction,
                 type: type,
-                method: method,
-                requestId: requestId,
+                method: JSONRPCMethod.safeLogName(for: method),
+                requestId: requestId == nil ? nil : "present",
                 jsonString: jsonString,
                 originalLength: originalLength,
                 isTruncated: isTruncated
@@ -657,9 +700,8 @@ internal class LogManager {
             eventManager?.emitJsonDataLog(logEvent)
 
         } catch {
-            // Handle malformed JSON
-            let rawString = String(data: data, encoding: .utf8) ?? "Invalid UTF-8"
-            let message = String(format: LogMessages.jsonDataMalformed, rawString)
+            // Never echo malformed wire data because it cannot be redacted safely.
+            let message = String(format: LogMessages.jsonDataMalformed, data.count)
             let timestamp = DateFormatter.logTimestamp.string(from: Date())
             print("[\(timestamp)][WuKongEasySDK][\(component)][JSON] \(message)")
         }
@@ -669,36 +711,53 @@ internal class LogManager {
     private func createTypeDescription(type: JSONDataType, method: String?, requestId: String?) -> String {
         var description = type.rawValue
 
-        if let method = method {
+        if let method = JSONRPCMethod.safeLogName(for: method) {
             description += "[\(method)]"
         }
 
-        if let requestId = requestId {
-            description += "(ID:\(requestId))"
+        if requestId != nil {
+            description += "(ID:present)"
         }
 
         return description
     }
 
-    /// Masks sensitive data in JSON objects
-    private func maskSensitiveData(_ jsonObject: Any) -> Any {
-        if let dictionary = jsonObject as? [String: Any] {
-            var maskedDict = dictionary
-            for (key, value) in dictionary {
-                if WebSocketConstants.sensitiveFields.contains(where: { key.lowercased().contains($0) }) {
-                    maskedDict[key] = WebSocketConstants.tokenMaskString
-                } else if let nestedDict = value as? [String: Any] {
-                    maskedDict[key] = maskSensitiveData(nestedDict)
-                } else if let nestedArray = value as? [Any] {
-                    maskedDict[key] = maskSensitiveData(nestedArray)
-                }
-            }
-            return maskedDict
-        } else if let array = jsonObject as? [Any] {
-            return array.map { maskSensitiveData($0) }
+    private func createRedactedJsonSummary(
+        from jsonObject: Any,
+        type: JSONDataType,
+        method: String?,
+        requestId: String?,
+        byteLength: Int
+    ) -> [String: Any] {
+        var summary: [String: Any] = ["byteLength": byteLength]
+
+        if let dictionary = jsonObject as? [String: Any],
+           dictionary["jsonrpc"] as? String == WebSocketConstants.jsonRpcVersion {
+            summary["jsonrpc"] = WebSocketConstants.jsonRpcVersion
+        }
+        if let safeMethod = JSONRPCMethod.safeLogName(for: method) {
+            summary["method"] = safeMethod
+        }
+        if requestId != nil {
+            summary["id"] = "present"
         }
 
-        return jsonObject
+        switch type {
+        case .request, .notification:
+            summary["params"] = WebSocketConstants.tokenMaskString
+        case .response:
+            summary["result"] = WebSocketConstants.tokenMaskString
+        case .error:
+            summary["error"] = WebSocketConstants.tokenMaskString
+        }
+
+        return summary
+    }
+
+    private func redactSensitiveValues(in message: String) -> String {
+        sensitiveValues.reduce(message) { redacted, sensitiveValue in
+            redacted.replacingOccurrences(of: sensitiveValue, with: WebSocketConstants.tokenMaskString)
+        }
     }
 }
 
@@ -788,7 +847,9 @@ internal class WuKongWebSocket: NSObject, @unchecked Sendable {
     /// Log manager for consistent logging
     private lazy var logger: LogManager = LogManager(
         logLevel: config.logLevel,
+        loggingEnabled: config.enableDebugLogging,
         enableJsonLogging: config.enableJsonLogging,
+        sensitiveValues: [config.token],
         eventManager: eventManager
     )
 
@@ -842,9 +903,12 @@ internal class WuKongWebSocket: NSObject, @unchecked Sendable {
 
     /// Cleanup when the WebSocket manager is deallocated
     deinit {
-        disconnect()
+        // Never enqueue work that captures `self` from deinit. Doing so can
+        // resurrect a partially deinitialized instance and crash at release.
+        networkMonitor?.pathUpdateHandler = nil
         networkMonitor?.cancel()
-        timerManager.cancelAllTimers()
+        isManualDisconnect = true
+        disconnectInternal()
     }
     
     // MARK: - Public API
@@ -979,7 +1043,7 @@ internal class WuKongWebSocket: NSObject, @unchecked Sendable {
             return
         }
 
-        logger.debug(LogMessages.initiatingConnection, url.absoluteString)
+        logger.debug(LogMessages.initiatingConnection)
 
         // Update state and reset manual disconnect flag
         state = .connecting
@@ -1059,7 +1123,7 @@ internal class WuKongWebSocket: NSObject, @unchecked Sendable {
     ///   - error: The authentication error
     ///   - completion: Callback to invoke with failure result
     private func handleAuthenticationFailure(error: Error, completion: @escaping (Result<Void, Error>) -> Void) {
-        logError("Authentication failed: \(error)")
+        logger.error(LogMessages.authenticationFailed, cause: error)
 
         // Reset state and notify of failure
         state = .disconnected
@@ -1134,7 +1198,7 @@ internal class WuKongWebSocket: NSObject, @unchecked Sendable {
             "header": header
         ]
 
-        logDebug("Sending message to channel \(channelId) (type: \(channelType.rawValue))")
+        logger.debug(LogMessages.sendingMessage, String(channelType.rawValue))
 
         // Send message request and handle response
         sendRequest(method: JSONRPCMethod.send, params: messageParams, timeout: config.requestTimeout) { result in
@@ -1142,14 +1206,14 @@ internal class WuKongWebSocket: NSObject, @unchecked Sendable {
             case .success(let response):
                 do {
                     let sendResult = try self.parseSendResult(from: response)
-                    self.logDebug("Message sent successfully - ID: \(sendResult.messageId), Seq: \(sendResult.messageSeq)")
+                    self.logger.debug(LogMessages.messageSentSuccessfully, sendResult.messageSeq)
                     completion(.success(sendResult))
                 } catch {
-                    self.logError("Failed to parse send result: \(error)")
+                    self.logger.error(LogMessages.failedToParseResult, cause: error)
                     completion(.failure(error))
                 }
             case .failure(let error):
-                self.logError("Failed to send message: \(error)")
+                self.logger.error(LogMessages.failedToSendMessage, cause: error)
                 completion(.failure(error))
             }
         }
@@ -1205,7 +1269,7 @@ internal class WuKongWebSocket: NSObject, @unchecked Sendable {
                 // Errors will be handled through the WebSocketDelegate
             }
 
-            logDebug("Sent JSON-RPC request: \(method) (ID: \(request.id))")
+            logger.debug(LogMessages.sentJsonRpcRequest, method.rawValue)
 
         } catch {
             completion(.failure(WuKongError.invalidJSON(error.localizedDescription)))
@@ -1241,7 +1305,7 @@ internal class WuKongWebSocket: NSObject, @unchecked Sendable {
             logDebug("Sent JSON-RPC notification: \(method)")
 
         } catch {
-            logError("Failed to encode notification '\(method)': \(error)")
+            logger.error("\(LogMessages.failedToEncodeNotification) '\(method.rawValue)'", cause: error)
         }
     }
 
@@ -1278,7 +1342,7 @@ internal class WuKongWebSocket: NSObject, @unchecked Sendable {
                 data: data
             )
 
-            logError("Failed to parse received message: \(error)")
+            logger.error(ErrorMessages.failedToParseMessage, cause: error)
             eventManager.emitError(WuKongError.invalidJSON(error.localizedDescription))
         }
     }
@@ -1305,7 +1369,7 @@ internal class WuKongWebSocket: NSObject, @unchecked Sendable {
         guard let id = dict["id"] as? String else { return }
 
         guard let pendingRequest = pendingRequests.removeValue(forKey: id) else {
-            logError("Received response for unknown request ID: \(id)")
+            logError(ErrorMessages.unknownRequestId)
             return
         }
 
@@ -1329,7 +1393,8 @@ internal class WuKongWebSocket: NSObject, @unchecked Sendable {
             return
         }
 
-        logDebug("Received notification: \(method)")
+        let safeMethod = JSONRPCMethod.safeLogName(for: method) ?? "unknown"
+        logDebug("Received notification: \(safeMethod)")
 
         switch method {
         case "recv":
@@ -1339,7 +1404,7 @@ internal class WuKongWebSocket: NSObject, @unchecked Sendable {
         case "disconnect":
             handleServerDisconnect(params)
         default:
-            logDebug("Unhandled notification method: \(method)")
+            logDebug("Unhandled notification method: \(safeMethod)")
         }
     }
 
@@ -1354,7 +1419,7 @@ internal class WuKongWebSocket: NSObject, @unchecked Sendable {
             sendRecvAck(messageId: message.messageId, messageSeq: message.messageSeq)
 
         } catch {
-            logError("Failed to parse received message: \(error)")
+            logger.error(ErrorMessages.failedToParseMessage, cause: error)
             eventManager.emitError(WuKongError.invalidJSON(error.localizedDescription))
         }
     }
@@ -1371,7 +1436,7 @@ internal class WuKongWebSocket: NSObject, @unchecked Sendable {
         let code = params["reasonCode"] as? Int ?? WebSocketConstants.serverDisconnectCode
         let reason = params["reason"] as? String ?? "Server disconnected"
 
-        logger.debug(LogMessages.serverInitiatedDisconnect, reason)
+        logger.debug(LogMessages.serverInitiatedDisconnect)
 
         let disconnectInfo = createDisconnectInfo(code: code, reason: reason)
         eventManager.emitDisconnect(disconnectInfo)
@@ -1438,7 +1503,7 @@ internal class WuKongWebSocket: NSObject, @unchecked Sendable {
 
         do {
             try sendPingRequest(request)
-            logger.debug(LogMessages.sentPingRequest, request.id)
+            logger.debug(LogMessages.sentPingRequest)
         } catch {
             handlePingError(error)
         }
@@ -1502,7 +1567,7 @@ internal class WuKongWebSocket: NSObject, @unchecked Sendable {
     }
 
     private func handlePingFailure(_ error: Error) {
-        logger.error(LogMessages.pingFailed, error.localizedDescription)
+        logger.error(LogMessages.pingFailed, cause: error)
         currentPingRequestId = nil
 
         // Emit error event for ping timeout (matches JS SDK behavior)
@@ -1517,12 +1582,12 @@ internal class WuKongWebSocket: NSObject, @unchecked Sendable {
     private func handlePingSendError(_ error: Error, requestId: String, pendingRequest: PendingRequest) {
         pendingRequests.removeValue(forKey: requestId)
         pendingRequest.complete()
-        logger.error(LogMessages.failedToSendPingRequest, error.localizedDescription)
+        logger.error(LogMessages.failedToSendPingRequest, cause: error)
         currentPingRequestId = nil
     }
 
     private func handlePingError(_ error: Error) {
-        logger.error(LogMessages.failedToEncodePingRequest, error.localizedDescription)
+        logger.error(LogMessages.failedToEncodePingRequest, cause: error)
         currentPingRequestId = nil
     }
 
@@ -1535,7 +1600,7 @@ internal class WuKongWebSocket: NSObject, @unchecked Sendable {
             pendingRequest.complete()
             pendingRequest.resolve([:]) // Resolve with empty result
             currentPingRequestId = nil
-            logDebug("Resolved ping request \(pingRequestId) with pong notification")
+            logDebug(LogMessages.resolvedPingRequest)
         } else {
             logDebug("Received pong notification but no pending ping request found")
         }
@@ -1570,7 +1635,7 @@ internal class WuKongWebSocket: NSObject, @unchecked Sendable {
                     case .success:
                         self?.logger.debug(LogMessages.reconnectionSuccessful)
                     case .failure(let error):
-                        self?.logger.error(LogMessages.reconnectionFailed, error.localizedDescription)
+                        self?.logger.error(LogMessages.reconnectionFailed, cause: error)
                         self?.tryReconnect()
                     }
                 }
@@ -1601,7 +1666,7 @@ internal class WuKongWebSocket: NSObject, @unchecked Sendable {
             wukongError = WuKongError.networkError(error.localizedDescription)
         }
 
-        logger.error("Request failed: %@", error.localizedDescription)
+        logger.error("Request failed", cause: error)
         completion(.failure(wukongError))
     }
 
@@ -1727,7 +1792,7 @@ extension WuKongWebSocket: WebSocketDelegate {
 
     private func handleWebSocketDisconnected(reason: String, code: UInt16) {
         let reasonString = reason.isEmpty ? "Unknown reason" : reason
-        logger.debug(LogMessages.webSocketClosed, Int(code), reasonString)
+        logger.debug(LogMessages.webSocketClosed, Int(code))
 
         let disconnectInfo = createDisconnectInfo(code: Int(code), reason: reasonString)
         eventManager.emitDisconnect(disconnectInfo)
@@ -1770,7 +1835,7 @@ extension WuKongWebSocket: WebSocketDelegate {
     private func handleWebSocketError(_ error: Error?) {
         guard let error = error else { return }
 
-        logger.error(LogMessages.webSocketError, error.localizedDescription)
+        logger.error(LogMessages.webSocketError, cause: error)
 
         // Convert to WuKongError and emit
         let wukongError: WuKongError

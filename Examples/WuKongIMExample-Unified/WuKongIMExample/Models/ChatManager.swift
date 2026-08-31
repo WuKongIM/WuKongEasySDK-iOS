@@ -69,7 +69,7 @@ class ChatManager: ObservableObject {
         connectionStatus = "Connecting..."
         lastError = nil
         
-        addLog("Attempting to connect to \(serverUrl) with user: \(uid)")
+        addLog("Attempting to connect")
         
         do {
             // Create configuration
@@ -168,7 +168,7 @@ class ChatManager: ObservableObject {
             await sendMessageInternal(payload: payload)
 
         } catch {
-            setError("Failed to parse custom JSON: \(error.localizedDescription)")
+            setError("Failed to parse custom JSON")
         }
     }
     
@@ -248,8 +248,7 @@ class ChatManager: ObservableObject {
         guard let easySDK = easySDK else { return }
         
         do {
-            addLog("Sending message to \(targetChannelId) (\(selectedChannelType))...")
-            addLog("Payload: \(payload.toDictionary())")
+            addLog("Sending message (channel type: \(selectedChannelType))...")
             
             let result = try await easySDK.send(
                 channelId: targetChannelId,
@@ -258,7 +257,6 @@ class ChatManager: ObservableObject {
             )
             
             addLog("✅ Message sent successfully!")
-            addLog("Message ID: \(result.messageId)")
             addLog("Message Seq: \(result.messageSeq)")
             
             // Add to local message history
@@ -278,8 +276,8 @@ class ChatManager: ObservableObject {
             messageContent = ""
             
         } catch {
-            addLog("❌ Failed to send message: \(error.localizedDescription)")
-            setError("Failed to send message: \(error.localizedDescription)")
+            addLog("❌ Failed to send message")
+            setError("Failed to send message")
         }
     }
 
@@ -347,7 +345,6 @@ class ChatManager: ObservableObject {
         lastError = nil
 
         addLog("🟢 Connected successfully!")
-        addLog("Server Key: \(result.serverKey)")
         addLog("Time Diff: \(result.timeDiff)")
         addLog("Reason Code: \(result.reasonCode)")
 
@@ -355,9 +352,6 @@ class ChatManager: ObservableObject {
             addLog("Server Version: \(serverVersion)")
         }
 
-        if let nodeId = result.nodeId {
-            addLog("Node ID: \(nodeId)")
-        }
     }
 
     private func handleDisconnectEvent(_ info: DisconnectInfo) {
@@ -367,15 +361,12 @@ class ChatManager: ObservableObject {
 
         addLog("🔴 Disconnected from server")
         addLog("Code: \(info.code)")
-        addLog("Reason: \(info.reason)")
     }
 
     private func handleMessageEvent(_ message: Message) {
         addLog("📨 Message received!")
-        addLog("From: \(message.fromUid)")
-        addLog("Channel: \(message.channelId)")
         addLog("Type: \(message.channelType)")
-        addLog("Content: \(message.payload)")
+        addLog("Message Seq: \(message.messageSeq)")
 
         // Add to message history
         let chatMessage = ChatMessage(
@@ -392,23 +383,18 @@ class ChatManager: ObservableObject {
     }
 
     private func handleErrorEvent(_ error: Error) {
-        addLog("⚠️ Error occurred: \(error.localizedDescription)")
+        addLog("⚠️ SDK operation failed")
 
         if let wkError = error as? WuKongError {
             addLog("Error Code: \(wkError.code)")
             addLog("Is Recoverable: \(wkError.isRecoverable)")
-
-            if let suggestion = wkError.recoverySuggestion {
-                addLog("Recovery Suggestion: \(suggestion)")
-            }
         }
 
-        setError(error.localizedDescription)
+        setError("SDK operation failed")
     }
 
     private func handleSendAckEvent(_ result: SendResult) {
         addLog("✅ Send acknowledgment received")
-        addLog("Message ID: \(result.messageId)")
         addLog("Message Seq: \(result.messageSeq)")
     }
 
@@ -420,13 +406,13 @@ class ChatManager: ObservableObject {
         addLog("🔄 Reconnecting... Attempt \(attempt), delay: \(delay)s")
     }
 
-    private func handleConnectionError(_ error: Error) {
+    private func handleConnectionError(_: Error) {
         isConnected = false
         isConnecting = false
         connectionStatus = "Connection Failed"
 
-        addLog("❌ Connection failed: \(error.localizedDescription)")
-        setError("Connection failed: \(error.localizedDescription)")
+        addLog("❌ Connection failed")
+        setError("Connection failed")
     }
 
     // MARK: - Utility Methods

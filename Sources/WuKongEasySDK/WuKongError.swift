@@ -262,6 +262,45 @@ public enum WuKongError: Error, LocalizedError, Equatable {
     }
 }
 
+// MARK: - Redacted String Representations
+
+extension WuKongError: CustomStringConvertible, CustomDebugStringConvertible {
+    /// A safe diagnostic summary that never serializes error-associated text or parameter names.
+    public var description: String {
+        return "WuKongError.\(diagnosticCategory)(code: \(code))"
+    }
+
+    public var debugDescription: String {
+        return description
+    }
+
+    /// A fixed category name selected without reflecting associated values.
+    private var diagnosticCategory: String {
+        switch self {
+        case .connectionFailed(_): return "connectionFailed"
+        case .authFailed(_): return "authFailed"
+        case .notConnected: return "notConnected"
+        case .connectionTimeout: return "connectionTimeout"
+        case .serverDisconnected(_, _): return "serverDisconnected"
+        case .networkError(_): return "networkError"
+        case .invalidChannel(_): return "invalidChannel"
+        case .invalidPayload(_): return "invalidPayload"
+        case .messageTooLarge: return "messageTooLarge"
+        case .sendTimeout: return "sendTimeout"
+        case .sendFailed(_): return "sendFailed"
+        case .invalidConfiguration(_): return "invalidConfiguration"
+        case .missingParameters(_): return "missingParameters"
+        case .invalidServerURL: return "invalidServerURL"
+        case .protocolError(_, _): return "protocolError"
+        case .invalidJSON(_): return "invalidJSON"
+        case .unexpectedResponse(_): return "unexpectedResponse"
+        case .unknown(_): return "unknown"
+        case .cancelled: return "cancelled"
+        case .notInitialized: return "notInitialized"
+        }
+    }
+}
+
 // MARK: - Error Creation Helpers
 
 extension WuKongError {

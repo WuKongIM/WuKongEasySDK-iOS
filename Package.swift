@@ -30,7 +30,7 @@ let package = Package(
             path: "Sources/WuKongEasySDK"),
         .testTarget(
             name: "WuKongEasySDKTests",
-            dependencies: ["WuKongEasySDK"],
+            dependencies: ["WuKongEasySDK", "Starscream"],
             path: "Tests/WuKongEasySDKTests"),
     ]
 )

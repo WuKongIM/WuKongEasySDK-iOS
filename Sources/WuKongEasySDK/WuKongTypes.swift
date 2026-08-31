@@ -315,6 +315,63 @@ public struct DisconnectInfo {
     }
 }
 
+// MARK: - Redacted String Representations
+
+extension AuthOptions: CustomStringConvertible, CustomDebugStringConvertible {
+    /// A safe diagnostic summary that never includes authentication identifiers or credentials.
+    public var description: String {
+        return "AuthOptions(<redacted>)"
+    }
+
+    public var debugDescription: String {
+        return description
+    }
+}
+
+extension ConnectResult: CustomStringConvertible, CustomDebugStringConvertible {
+    /// A safe diagnostic summary that omits negotiated encryption material.
+    public var description: String {
+        return "ConnectResult(reasonCode: \(reasonCode), <redacted>)"
+    }
+
+    public var debugDescription: String {
+        return description
+    }
+}
+
+extension SendResult: CustomStringConvertible, CustomDebugStringConvertible {
+    /// A safe diagnostic summary that omits the server-assigned message identifier.
+    public var description: String {
+        return "SendResult(messageSeq: \(messageSeq), messageId: <redacted>)"
+    }
+
+    public var debugDescription: String {
+        return description
+    }
+}
+
+extension Message: CustomStringConvertible, CustomDebugStringConvertible {
+    /// A safe diagnostic summary that omits sender, channel, message, stream, and payload data.
+    public var description: String {
+        return "Message(messageSeq: \(messageSeq), channelType: \(channelType), payload: <redacted>)"
+    }
+
+    public var debugDescription: String {
+        return description
+    }
+}
+
+extension DisconnectInfo: CustomStringConvertible, CustomDebugStringConvertible {
+    /// A safe diagnostic summary that omits the server- or transport-provided reason text.
+    public var description: String {
+        return "DisconnectInfo(code: \(code), reason: <redacted>)"
+    }
+
+    public var debugDescription: String {
+        return description
+    }
+}
+
 /// Message payload structure for sending messages
 /// Flexible dictionary-based approach that can hold arbitrary key-value pairs
 public struct MessagePayload: Codable, ExpressibleByDictionaryLiteral {
@@ -476,13 +533,13 @@ public struct MessagePayload: Codable, ExpressibleByDictionaryLiteral {
 
 extension MessagePayload: CustomStringConvertible {
     public var description: String {
-        return "MessagePayload(\(payload))"
+        return "MessagePayload(count: \(payload.count), payload: <redacted>)"
     }
 }
 
 extension MessagePayload: CustomDebugStringConvertible {
     public var debugDescription: String {
-        return "MessagePayload(payload: \(payload))"
+        return description
     }
 }
 

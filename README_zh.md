@@ -56,8 +56,14 @@ let sdk = WuKongEasySDK(config: config)
 
 // 2. 设置事件监听器
 sdk.onConnect { _ in print("已连接！") }
-sdk.onMessage { message in print("收到消息：\(message.payload)") }
-sdk.onError { error in print("错误：\(error)") }
+sdk.onMessage { message in print("收到消息，序号：\(message.messageSeq)") }
+sdk.onError { error in
+    if let sdkError = error as? WuKongError {
+        print("SDK 错误码：\(sdkError.code)")
+    } else {
+        print("SDK 传输错误")
+    }
+}
 
 // 3. 连接
 try await sdk.connect()
@@ -110,7 +116,7 @@ let customMessage: MessagePayload = [
 
 在 `Examples/WuKongIMExample-Unified/` 中提供了 SwiftUI 示例应用：
 
-- 实时消息传输，显示原始 JSON 载荷
+- 实时消息传输，显示消息元数据
 - 连接管理和事件日志
 - 跨平台（iOS/macOS）
 
@@ -132,9 +138,22 @@ let sdk = try WuKongEasySDK.create { builder in
         .token("auth-token")
         .connectionTimeout(30)
         .enableDebugLogging(true)
+        .logLevel(.info)
         .build()
 }
 ```
+
+`enableDebugLogging` 是全部 SDK 诊断日志的总开关。设为 `false` 时，
+`logLevel` 无法开启 INFO、ERROR、DEBUG 或 JSON 输出；设为 `true` 后，
+`logLevel` 决定最高详细级别。JSON 线协议摘要还要求日志级别为 `.debug` 且
+`enableJsonLogging` 已开启，并且只记录经过脱敏的 JSON-RPC 信封信息；参数、
+Payload、结果、错误内容、格式错误的原始输入、连接 URL、断开原因、未知方法名
+和请求 ID 均不会原样输出。
+
+> **尚未发布的 API：** `WuKongConfigBuilder.enableJsonLogging(_:)` 当前仅在
+> `main` 分支可用，将在 `1.0.3` 之后的下一个版本发布。仍使用 `1.0.3` 的应用
+> 请不要调用这个 Builder 方法；该版本可通过 `WuKongConfig` 的直接初始化方法
+> 传入 `enableJsonLogging`。
 
 ### 错误处理
 
@@ -142,15 +161,17 @@ let sdk = try WuKongEasySDK.create { builder in
 sdk.onError { error in
     if let wkError = error as? WuKongError {
         switch wkError {
-        case .authFailed(let message):
-            print("认证失败：\(message)")
-        case .networkError(let message):
-            print("网络错误：\(message)")
+        case .authFailed:
+            print("认证失败")
+        case .networkError:
+            print("网络错误")
         case .notConnected:
             print("未连接")
         default:
-            print("错误：\(wkError.localizedDescription)")
+            print("SDK 错误码：\(wkError.code)")
         }
+    } else {
+        print("SDK 传输错误")
     }
 }
 ```

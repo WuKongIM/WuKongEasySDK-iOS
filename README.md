@@ -56,8 +56,14 @@ let sdk = WuKongEasySDK(config: config)
 
 // 2. Set up event listeners
 sdk.onConnect { _ in print("Connected!") }
-sdk.onMessage { message in print("Received: \(message.payload)") }
-sdk.onError { error in print("Error: \(error)") }
+sdk.onMessage { message in print("Received message, sequence: \(message.messageSeq)") }
+sdk.onError { error in
+    if let sdkError = error as? WuKongError {
+        print("SDK error code: \(sdkError.code)")
+    } else {
+        print("SDK transport error")
+    }
+}
 
 // 3. Connect
 try await sdk.connect()
@@ -110,7 +116,7 @@ let customMessage: MessagePayload = [
 
 A SwiftUI example app is available in `Examples/WuKongIMExample-Unified/`:
 
-- Real-time messaging with raw JSON payload display
+- Real-time messaging with message metadata display
 - Connection management and event logging
 - Cross-platform (iOS/macOS)
 
@@ -132,9 +138,22 @@ let sdk = try WuKongEasySDK.create { builder in
         .token("auth-token")
         .connectionTimeout(30)
         .enableDebugLogging(true)
+        .logLevel(.info)
         .build()
 }
 ```
+
+`enableDebugLogging` is the master switch for every SDK diagnostic. When it is
+`false`, `logLevel` cannot enable INFO, ERROR, DEBUG, or JSON output. When it is
+`true`, `logLevel` selects the maximum verbosity. JSON wire summaries also
+require `.debug` and `enableJsonLogging`; they contain only redacted JSON-RPC
+envelope data. Params, payloads, results, errors, malformed input, connection
+URLs, disconnect reasons, unknown methods, and request IDs are never echoed.
+
+> **Unreleased API:** `WuKongConfigBuilder.enableJsonLogging(_:)` is available
+> on `main` and will ship in the next release after `1.0.3`. Applications pinned
+> to `1.0.3` should omit that builder call; its direct `WuKongConfig` initializer
+> already accepts `enableJsonLogging`.
 
 ### Error Handling
 
@@ -142,15 +161,17 @@ let sdk = try WuKongEasySDK.create { builder in
 sdk.onError { error in
     if let wkError = error as? WuKongError {
         switch wkError {
-        case .authFailed(let message):
-            print("Auth failed: \(message)")
-        case .networkError(let message):
-            print("Network error: \(message)")
+        case .authFailed:
+            print("Authentication failed")
+        case .networkError:
+            print("Network error")
         case .notConnected:
             print("Not connected")
         default:
-            print("Error: \(wkError.localizedDescription)")
+            print("SDK error code: \(wkError.code)")
         }
+    } else {
+        print("SDK transport error")
     }
 }
 ```

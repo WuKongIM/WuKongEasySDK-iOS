@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Made `enableDebugLogging` the master switch for SDK, event, WebSocket, and JSON diagnostics while retaining `logLevel` as the enabled-logging severity filter
+- Added `enableJsonLogging(_:)` to `WuKongConfigBuilder`
+- Fixed WebSocket teardown so deinitialization no longer enqueues work that captures a partially deinitialized instance
+
+### Security
+- Prevented JSON wire logs from bypassing disabled debug logging
+- Replaced raw JSON-RPC data with a safe envelope summary and redacted unstructured error details
+- Removed connection URLs, disconnect reasons, unknown methods, and request IDs from diagnostic output
+- Stopped malformed JSON input from being echoed into logs
+- Updated README and sample applications to avoid logging complete messages, payloads, credentials, identifiers, disconnect reasons, or error descriptions
+- Redacted sensitive fields from public model description, debug-description, and interpolation output
+
 ## [1.0.3] - 2026-08-28
 
 ### Added
