@@ -10,6 +10,14 @@ import Foundation
 import Network
 import Starscream
 
+/// WebSocket capabilities required by the manager and injectable in tests.
+internal protocol ManagedWebSocketClient: WebSocketClient {
+    var delegate: WebSocketDelegate? { get set }
+    var callbackQueue: DispatchQueue { get set }
+}
+
+extension Starscream.WebSocket: ManagedWebSocketClient {}
+
 // MARK: - Constants and Configuration
 
 /// WebSocket connection constants
@@ -839,6 +847,8 @@ internal class WuKongWebSocket: NSObject, @unchecked Sendable {
     private let eventManager: WuKongEventManager
     /// Serial queue for thread-safe WebSocket operations
     private let queue = DispatchQueue(label: "com.wukongim.easysdk.websocket", qos: .userInitiated)
+    /// Creates one transport for each connection attempt.
+    private let webSocketFactory: (URLRequest) -> ManagedWebSocketClient
 
     // MARK: - Managers
 
@@ -855,8 +865,8 @@ internal class WuKongWebSocket: NSObject, @unchecked Sendable {
 
     // MARK: - Connection Properties
 
-    /// The underlying Starscream WebSocket
-    private var webSocket: Starscream.WebSocket?
+    /// The transport currently allowed to mutate connection state.
+    private var webSocket: ManagedWebSocketClient?
     /// Current connection state
     private var state: WebSocketState = .disconnected
     /// Flag indicating if disconnect was initiated by user
@@ -893,9 +903,16 @@ internal class WuKongWebSocket: NSObject, @unchecked Sendable {
     /// - Parameters:
     ///   - config: WebSocket configuration settings
     ///   - eventManager: Event manager for emitting events
-    init(config: WuKongConfig, eventManager: WuKongEventManager) {
+    init(
+        config: WuKongConfig,
+        eventManager: WuKongEventManager,
+        webSocketFactory: @escaping (URLRequest) -> ManagedWebSocketClient = {
+            Starscream.WebSocket(request: $0)
+        }
+    ) {
         self.config = config
         self.eventManager = eventManager
+        self.webSocketFactory = webSocketFactory
         super.init()
 
         setupNetworkMonitoring()
@@ -980,11 +997,11 @@ internal class WuKongWebSocket: NSObject, @unchecked Sendable {
     // MARK: - Setup Methods
 
     /// Creates and configures a Starscream WebSocket instance
-    private func createWebSocket(url: URL) -> Starscream.WebSocket {
+    private func createWebSocket(url: URL) -> ManagedWebSocketClient {
         var request = URLRequest(url: url)
         request.timeoutInterval = config.connectionTimeout
 
-        let webSocket = Starscream.WebSocket(request: request)
+        let webSocket = webSocketFactory(request)
         webSocket.delegate = self
 
         // Configure WebSocket options
@@ -1143,28 +1160,32 @@ internal class WuKongWebSocket: NSObject, @unchecked Sendable {
             logDebug("Initiating WebSocket disconnection and cleanup")
         }
 
-        // Stop all timers
+        // Detach all connection-owned state before invoking callbacks. A
+        // rejected authentication request can synchronously re-enter cleanup.
+        let previousState = state
+        let socketToDisconnect = webSocket
+        let connectionToCancel = connectionCompletion
+        let requestsToCancel = Array(pendingRequests.values)
+        webSocket = nil
+        connectionCompletion = nil
+        pendingRequests.removeAll()
+        state = .disconnected
+        currentPingRequestId = nil
+
         timerManager.cancelAllTimers()
 
-        // Cancel all pending requests with appropriate error
-        let pendingRequestCount = pendingRequests.count
-        for (_, request) in pendingRequests {
+        let pendingRequestCount = requestsToCancel.count
+        socketToDisconnect?.disconnect(closeCode: CloseCode.normal.rawValue)
+
+        connectionToCancel?(.failure(WuKongError.cancelled))
+        for request in requestsToCancel {
             request.complete()
             request.reject(WuKongError.cancelled)
         }
-        pendingRequests.removeAll()
 
         if emitDiagnostics, pendingRequestCount > 0 {
             logDebug("Cancelled \(pendingRequestCount) pending requests")
         }
-
-        // Close WebSocket connection gracefully
-        webSocket?.disconnect(closeCode: CloseCode.normal.rawValue)
-        webSocket = nil
-
-        // Update state and emit disconnect event if needed
-        let previousState = state
-        state = .disconnected
 
         if previousState != .disconnected {
             if emitDisconnectEvent {
@@ -1756,6 +1777,16 @@ private extension DateFormatter {
 extension WuKongWebSocket: WebSocketDelegate {
 
     func didReceive(event: WebSocketEvent, client: WebSocketClient) {
+        guard let activeClient = webSocket, activeClient === client else {
+            logger.debug("Ignored event from retired WebSocket transport")
+            return
+        }
+
+        handleWebSocketEvent(event)
+    }
+
+    /// Interprets an event after the delegate boundary has validated transport identity.
+    internal func handleWebSocketEvent(_ event: WebSocketEvent) {
         switch event {
         case .connected(let headers):
             handleWebSocketConnected(headers: headers)
@@ -1803,6 +1834,7 @@ extension WuKongWebSocket: WebSocketDelegate {
         let reasonString = reason.isEmpty ? "Unknown reason" : reason
         logger.debug(LogMessages.webSocketClosed, Int(code))
 
+        webSocket = nil
         let disconnectInfo = createDisconnectInfo(code: Int(code), reason: reasonString)
         eventManager.emitDisconnect(disconnectInfo)
 
@@ -1838,12 +1870,14 @@ extension WuKongWebSocket: WebSocketDelegate {
 
     private func handleWebSocketCancelled() {
         logger.debug("WebSocket connection cancelled")
+        webSocket = nil
         state = .disconnected
     }
 
     private func handleWebSocketError(_ error: Error?) {
         guard let error = error else { return }
 
+        webSocket = nil
         logger.error(LogMessages.webSocketError, cause: error)
 
         // Convert to WuKongError and emit
@@ -1871,6 +1905,7 @@ extension WuKongWebSocket: WebSocketDelegate {
 
     private func handleWebSocketPeerClosed() {
         logger.debug("WebSocket peer closed connection")
+        webSocket = nil
         state = .disconnected
 
         if !isManualDisconnect {

@@ -174,6 +174,15 @@ struct MessagingSection: View {
             
             VStack(spacing: 12) {
                 HStack {
+                    Image(systemName: "person.crop.circle")
+                        .foregroundColor(.green)
+                        .frame(width: 20)
+                    TextField("Target user", text: $chatManager.targetChannelId)
+                        .textFieldStyle(RoundedBorderTextFieldStyle())
+                        .focused($isMessageFocused)
+                }
+
+                HStack {
                     Image(systemName: "message")
                         .foregroundColor(.blue)
                         .frame(width: 20)
@@ -216,11 +225,11 @@ struct MessagingSection: View {
                     }
                     .frame(maxWidth: .infinity)
                     .padding()
-                    .background(messageText.isEmpty || isSending ? Color.gray : Color.blue)
+                    .background(cannotSend ? Color.gray : Color.blue)
                     .foregroundColor(.white)
                     .cornerRadius(12)
                 }
-                .disabled(messageText.isEmpty || isSending)
+                .disabled(cannotSend)
             }
         }
         .padding()
@@ -229,7 +238,11 @@ struct MessagingSection: View {
     }
     
     private func sendMessage() {
-        guard !messageText.isEmpty else { return }
+        let targetUser = chatManager.targetChannelId.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !messageText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+              !targetUser.isEmpty else { return }
+
+        chatManager.targetChannelId = targetUser
         
         isSending = true
         isMessageFocused = false
@@ -241,6 +254,12 @@ struct MessagingSection: View {
                 isSending = false
             }
         }
+    }
+
+    private var cannotSend: Bool {
+        return messageText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
+            chatManager.targetChannelId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
+            isSending
     }
 }
 
