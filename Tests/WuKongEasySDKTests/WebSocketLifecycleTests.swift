@@ -6,17 +6,56 @@ import XCTest
 @available(macOS 12.0, *)
 final class WebSocketLifecycleTests: XCTestCase {
     func testRunnableUnifiedExampleExposesTheDocumentedTargetUserField() throws {
-        let repositoryRoot = URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-        let contentView = repositoryRoot
-            .appendingPathComponent("Examples/WuKongIMExample-Unified/Sources")
-            .appendingPathComponent("WuKongIMExample-Unified/ContentView.swift")
+        let contentView = runnableExampleSourceRoot()
+            .appendingPathComponent("ContentView.swift")
         let source = try String(contentsOf: contentView, encoding: .utf8)
 
         XCTAssertTrue(source.contains("TextField(\"Target user\""))
         XCTAssertTrue(source.contains("$chatManager.targetChannelId"))
+    }
+
+    func testRunnableUnifiedExampleDisplaysMessageHistory() throws {
+        let sourceRoot = runnableExampleSourceRoot()
+        let contentView = try String(
+            contentsOf: sourceRoot.appendingPathComponent("ContentView.swift"),
+            encoding: .utf8
+        )
+
+        XCTAssertTrue(contentView.contains("ForEach(chatManager.messages)"))
+        XCTAssertTrue(contentView.contains("Text(message.content)"))
+    }
+
+    func testRunnableUnifiedExampleUsesTheTextPayloadContract() throws {
+        let sourceRoot = runnableExampleSourceRoot()
+        let chatManager = try String(
+            contentsOf: sourceRoot.appendingPathComponent("ChatManager.swift"),
+            encoding: .utf8
+        )
+
+        XCTAssertTrue(chatManager.contains("MessagePayload([\"content\": text, \"type\": 1])"))
+        XCTAssertFalse(chatManager.contains("MessagePayload([\"text\": text"))
+    }
+
+    func testRunnableUnifiedExampleTreatsReceivedTimestampAsUnixSeconds() throws {
+        let chatManager = try String(
+            contentsOf: runnableExampleSourceRoot().appendingPathComponent("ChatManager.swift"),
+            encoding: .utf8
+        )
+
+        XCTAssertTrue(
+            chatManager.contains("Date(timeIntervalSince1970: TimeInterval(message.timestamp))")
+        )
+        XCTAssertFalse(chatManager.contains("message.timestamp / 1000"))
+    }
+
+    func testRunnableUnifiedExampleUsesSwift57CompatiblePreviews() throws {
+        let contentView = try String(
+            contentsOf: runnableExampleSourceRoot().appendingPathComponent("ContentView.swift"),
+            encoding: .utf8
+        )
+
+        XCTAssertFalse(contentView.contains("#Preview"))
+        XCTAssertTrue(contentView.contains("PreviewProvider"))
     }
 
     func testDisconnectWhileConnectingCompletesThePendingConnect() throws {
@@ -90,6 +129,15 @@ final class WebSocketLifecycleTests: XCTestCase {
             eventManager: eventManager,
             webSocketFactory: factory.make
         )
+    }
+
+    private func runnableExampleSourceRoot() -> URL {
+        URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .appendingPathComponent("Examples/WuKongIMExample-Unified/Sources")
+            .appendingPathComponent("WuKongIMExample-Unified")
     }
 }
 

@@ -244,7 +244,7 @@ class ChatManager: ObservableObject {
 
     /// Send a simple text message
     func sendMessage(_ text: String) async {
-        let payload = MessagePayload(["text": text, "type": 1])
+        let payload = MessagePayload(["content": text, "type": 1])
         await sendMessage(payload: payload)
     }
 
@@ -381,7 +381,7 @@ class ChatManager: ObservableObject {
             fromUserId: message.fromUid,
             channelId: message.channelId,
             channelType: ChannelType(rawValue: message.channelType) ?? .person,
-            timestamp: Date(timeIntervalSince1970: TimeInterval(message.timestamp / 1000)),
+            timestamp: Date(timeIntervalSince1970: TimeInterval(message.timestamp)),
             payload: message.payload,
             isOutgoing: false
         )
