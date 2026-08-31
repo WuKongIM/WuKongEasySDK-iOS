@@ -147,6 +147,7 @@ struct ConnectionView: View {
                 // Messaging Section (only when connected)
                 if chatManager.isConnected {
                     MessagingSection(chatManager: chatManager)
+                    MessageHistorySection(chatManager: chatManager)
                 }
                 
                 Spacer(minLength: 100) // Extra space for keyboard
@@ -173,6 +174,15 @@ struct MessagingSection: View {
                 .foregroundColor(.primary)
             
             VStack(spacing: 12) {
+                HStack {
+                    Image(systemName: "person.crop.circle")
+                        .foregroundColor(.green)
+                        .frame(width: 20)
+                    TextField("Target user", text: $chatManager.targetChannelId)
+                        .textFieldStyle(RoundedBorderTextFieldStyle())
+                        .focused($isMessageFocused)
+                }
+
                 HStack {
                     Image(systemName: "message")
                         .foregroundColor(.blue)
@@ -216,11 +226,11 @@ struct MessagingSection: View {
                     }
                     .frame(maxWidth: .infinity)
                     .padding()
-                    .background(messageText.isEmpty || isSending ? Color.gray : Color.blue)
+                    .background(cannotSend ? Color.gray : Color.blue)
                     .foregroundColor(.white)
                     .cornerRadius(12)
                 }
-                .disabled(messageText.isEmpty || isSending)
+                .disabled(cannotSend)
             }
         }
         .padding()
@@ -229,7 +239,11 @@ struct MessagingSection: View {
     }
     
     private func sendMessage() {
-        guard !messageText.isEmpty else { return }
+        let targetUser = chatManager.targetChannelId.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !messageText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+              !targetUser.isEmpty else { return }
+
+        chatManager.targetChannelId = targetUser
         
         isSending = true
         isMessageFocused = false
@@ -241,6 +255,71 @@ struct MessagingSection: View {
                 isSending = false
             }
         }
+    }
+
+    private var cannotSend: Bool {
+        return messageText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
+            chatManager.targetChannelId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
+            isSending
+    }
+}
+
+// MARK: - Message History Section
+struct MessageHistorySection: View {
+    @ObservedObject var chatManager: ChatManager
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("Messages")
+                    .font(.headline)
+                Spacer()
+                if !chatManager.messages.isEmpty {
+                    Button("Clear") {
+                        chatManager.clearMessages()
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                }
+            }
+
+            if chatManager.messages.isEmpty {
+                Text("No messages yet")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+            } else {
+                ForEach(chatManager.messages) { message in
+                    MessageRowView(message: message)
+                }
+            }
+        }
+        .padding()
+        .background(Color.gray.opacity(0.1))
+        .cornerRadius(12)
+    }
+}
+
+struct MessageRowView: View {
+    let message: ChatMessage
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(message.isOutgoing ? "You" : message.fromUserId)
+                .font(.caption)
+                .foregroundColor(.secondary)
+            Text(message.content)
+                .font(.body)
+            Text(message.formattedTime)
+                .font(.caption2)
+                .foregroundColor(.secondary)
+        }
+        .padding(10)
+        .background(message.isOutgoing ? Color.blue.opacity(0.15) : Color.gray.opacity(0.15))
+        .cornerRadius(8)
+        .frame(
+            maxWidth: .infinity,
+            alignment: message.isOutgoing ? .trailing : .leading
+        )
     }
 }
 
@@ -377,6 +456,8 @@ extension EventLog.LogType {
     }
 }
 
-#Preview {
-    ContentView()
+struct ContentView_Previews: PreviewProvider {
+    static var previews: some View {
+        ContentView()
+    }
 }

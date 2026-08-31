@@ -16,19 +16,17 @@ final class LoggingSecurityTests: XCTestCase {
             logLevel: .info,
             enableJsonLogging: true
         )
-        let (socket, eventManager, client) = makeSocket(config: config)
+        let (socket, eventManager) = makeSocket(config: config)
 
         let output = captureStandardOutput {
             let sdk = WuKongEasySDK(config: config)
             _ = sdk.onMessage { _ in }
             _ = eventManager.onError { _ in }
-            socket.didReceive(
-                event: .text(#"{"jsonrpc":"2.0","method":"futureMethod","params":{"payload":"PAYLOAD_CANARY_DISABLED_0F3E5C7B"}}"#),
-                client: client
+            socket.handleWebSocketEvent(
+                .text(#"{"jsonrpc":"2.0","method":"futureMethod","params":{"payload":"PAYLOAD_CANARY_DISABLED_0F3E5C7B"}}"#)
             )
-            socket.didReceive(
-                event: .error(NSError(domain: "ERROR_CANARY_DISABLED_63B7728D", code: 7)),
-                client: client
+            socket.handleWebSocketEvent(
+                .error(NSError(domain: "ERROR_CANARY_DISABLED_63B7728D", code: 7))
             )
             withExtendedLifetime(sdk) {}
         }
@@ -46,16 +44,15 @@ final class LoggingSecurityTests: XCTestCase {
             logLevel: .debug,
             enableJsonLogging: true
         )
-        let (socket, _, client) = makeSocket(config: config)
+        let (socket, _) = makeSocket(config: config)
 
         let output = captureStandardOutput {
             let sdk = WuKongEasySDK(config: config)
             _ = sdk.onMessage { _ in }
-            socket.didReceive(
-                event: .text(#"{"jsonrpc":"2.0","method":"recv","params":{"payload":"LEVEL_CANARY_3DCE68D1"}}"#),
-                client: client
+            socket.handleWebSocketEvent(
+                .text(#"{"jsonrpc":"2.0","method":"recv","params":{"payload":"LEVEL_CANARY_3DCE68D1"}}"#)
             )
-            socket.didReceive(event: .error(NSError(domain: "level-canary", code: 8)), client: client)
+            socket.handleWebSocketEvent(.error(NSError(domain: "level-canary", code: 8)))
             withExtendedLifetime(sdk) {}
         }
 
@@ -73,7 +70,7 @@ final class LoggingSecurityTests: XCTestCase {
             logLevel: .info,
             enableJsonLogging: true
         )
-        let (socket, _, client) = makeSocket(config: config)
+        let (socket, _) = makeSocket(config: config)
         let incomingMessage = """
         {
           "jsonrpc": "2.0",
@@ -92,7 +89,7 @@ final class LoggingSecurityTests: XCTestCase {
         """
 
         let output = captureStandardOutput {
-            socket.didReceive(event: .text(incomingMessage), client: client)
+            socket.handleWebSocketEvent(.text(incomingMessage))
         }
 
         XCTAssertFalse(output.contains("[DEBUG]"), "enableDebugLogging=false still emitted debug output: \(output)")
@@ -111,7 +108,7 @@ final class LoggingSecurityTests: XCTestCase {
             logLevel: .debug,
             enableJsonLogging: true
         )
-        let (socket, _, client) = makeSocket(config: config)
+        let (socket, _) = makeSocket(config: config)
         let incomingMessage = """
         {
           "jsonrpc": "2.0",
@@ -130,7 +127,7 @@ final class LoggingSecurityTests: XCTestCase {
         """
 
         let output = captureStandardOutput {
-            socket.didReceive(event: .text(incomingMessage), client: client)
+            socket.handleWebSocketEvent(.text(incomingMessage))
         }
 
         XCTAssertTrue(output.contains("NOTIFICATION[recv]"), "Debug logging should retain JSON-RPC envelope metadata: \(output)")
@@ -148,11 +145,11 @@ final class LoggingSecurityTests: XCTestCase {
             logLevel: .debug,
             enableJsonLogging: true
         )
-        let (socket, _, client) = makeSocket(config: config)
+        let (socket, _) = makeSocket(config: config)
         let malformedMessage = "{\"payload\":\"\(malformedCanary)\""
 
         let output = captureStandardOutput {
-            socket.didReceive(event: .text(malformedMessage), client: client)
+            socket.handleWebSocketEvent(.text(malformedMessage))
         }
 
         XCTAssertTrue(output.contains("Malformed JSON data"), "Debug logging should retain the parse failure category: \(output)")
@@ -171,7 +168,7 @@ final class LoggingSecurityTests: XCTestCase {
             logLevel: .debug,
             enableJsonLogging: true
         )
-        let (socket, _, client) = makeSocket(config: config)
+        let (socket, _) = makeSocket(config: config)
         let incomingMessage = """
         {
           "jsonrpc": "2.0",
@@ -181,7 +178,7 @@ final class LoggingSecurityTests: XCTestCase {
         """
 
         let output = captureStandardOutput {
-            socket.didReceive(event: .text(incomingMessage), client: client)
+            socket.handleWebSocketEvent(.text(incomingMessage))
         }
 
         XCTAssertTrue(output.contains("NOTIFICATION[unknown]"), "Debug logging should classify an unknown method without echoing it: \(output)")
@@ -200,13 +197,13 @@ final class LoggingSecurityTests: XCTestCase {
             logLevel: .debug,
             enableJsonLogging: true
         )
-        let (socket, _, client) = makeSocket(config: config)
+        let (socket, _) = makeSocket(config: config)
         let incomingMessage = """
         {"unexpected":"\(objectCanary)"}
         """
 
         let output = captureStandardOutput {
-            socket.didReceive(event: .text(incomingMessage), client: client)
+            socket.handleWebSocketEvent(.text(incomingMessage))
         }
 
         XCTAssertTrue(output.contains("RECEIVED ERROR"), "Debug logging should retain the unclassified-message category: \(output)")
@@ -227,7 +224,7 @@ final class LoggingSecurityTests: XCTestCase {
             logLevel: .debug,
             enableJsonLogging: true
         )
-        let (socket, _, client) = makeSocket(config: config)
+        let (socket, _) = makeSocket(config: config)
         let resultResponse = """
         {"jsonrpc":"2.0","id":"\(resultIdCanary)","result":{"arbitrary":"\(resultCanary)"}}
         """
@@ -236,8 +233,8 @@ final class LoggingSecurityTests: XCTestCase {
         """
 
         let output = captureStandardOutput {
-            socket.didReceive(event: .text(resultResponse), client: client)
-            socket.didReceive(event: .text(errorResponse), client: client)
+            socket.handleWebSocketEvent(.text(resultResponse))
+            socket.handleWebSocketEvent(.text(errorResponse))
         }
 
         XCTAssertTrue(output.contains("ID:present"), "Debug logging should retain response correlation presence: \(output)")
@@ -260,7 +257,7 @@ final class LoggingSecurityTests: XCTestCase {
             logLevel: .debug,
             enableJsonLogging: true
         )
-        let (socket, eventManager, client) = makeSocket(config: config)
+        let (socket, eventManager) = makeSocket(config: config)
         var capturedEvents: [JSONDataLogEvent] = []
         let receivedEvents = expectation(description: "redacted JSON data log events")
         receivedEvents.expectedFulfillmentCount = 2
@@ -276,8 +273,8 @@ final class LoggingSecurityTests: XCTestCase {
         """
 
         _ = captureStandardOutput {
-            socket.didReceive(event: .text(notification), client: client)
-            socket.didReceive(event: .text(response), client: client)
+            socket.handleWebSocketEvent(.text(notification))
+            socket.handleWebSocketEvent(.text(response))
             wait(for: [receivedEvents], timeout: 1)
         }
 
@@ -307,15 +304,15 @@ final class LoggingSecurityTests: XCTestCase {
             logLevel: .debug,
             enableJsonLogging: true
         )
-        let (socket, _, client) = makeSocket(config: config)
+        let (socket, _) = makeSocket(config: config)
         let serverDisconnect = """
         {"jsonrpc":"2.0","method":"disconnect","params":{"reasonCode":1000,"reason":"\(serverReasonCanary)"}}
         """
 
         let output = captureStandardOutput {
             let sdk = WuKongEasySDK(config: config)
-            socket.didReceive(event: .text(serverDisconnect), client: client)
-            socket.didReceive(event: .disconnected(transportReasonCanary, 1000), client: client)
+            socket.handleWebSocketEvent(.text(serverDisconnect))
+            socket.handleWebSocketEvent(.disconnected(transportReasonCanary, 1000))
             withExtendedLifetime(sdk) {}
         }
 
@@ -339,11 +336,11 @@ final class LoggingSecurityTests: XCTestCase {
             logLevel: .error,
             enableJsonLogging: false
         )
-        let (socket, _, client) = makeSocket(config: config)
+        let (socket, _) = makeSocket(config: config)
         let transportError = NSError(domain: "Transport-\(tokenCanary)-\(payloadCanary)", code: 1)
 
         let output = captureStandardOutput {
-            socket.didReceive(event: .error(transportError), client: client)
+            socket.handleWebSocketEvent(.error(transportError))
         }
 
         XCTAssertTrue(output.contains("WebSocket error"), "Error logging should retain its category: \(output)")
@@ -381,16 +378,15 @@ final class LoggingSecurityTests: XCTestCase {
             logLevel: .info,
             enableJsonLogging: true
         )
-        let (socket, _, client) = makeSocket(config: config)
+        let (socket, _) = makeSocket(config: config)
 
         let output = captureStandardOutput {
             let sdk = WuKongEasySDK(config: config)
             _ = sdk.onMessage { _ in }
-            socket.didReceive(
-                event: .text(#"{"jsonrpc":"2.0","method":"futureMethod","params":{"payload":"FILTER_CANARY_428762DF"}}"#),
-                client: client
+            socket.handleWebSocketEvent(
+                .text(#"{"jsonrpc":"2.0","method":"futureMethod","params":{"payload":"FILTER_CANARY_428762DF"}}"#)
             )
-            socket.didReceive(event: .error(NSError(domain: "filter-canary", code: 9)), client: client)
+            socket.handleWebSocketEvent(.error(NSError(domain: "filter-canary", code: 9)))
             withExtendedLifetime(sdk) {}
         }
 
@@ -424,13 +420,13 @@ final class LoggingSecurityTests: XCTestCase {
             logLevel: .debug,
             enableJsonLogging: false
         )
-        let (socket, _, client) = makeSocket(config: config)
+        let (socket, _) = makeSocket(config: config)
         let incomingMessage = """
         {"jsonrpc":"2.0","method":"futureMethod","params":{"arbitrary":"\(paramsCanary)"}}
         """
 
         let output = captureStandardOutput {
-            socket.didReceive(event: .text(incomingMessage), client: client)
+            socket.handleWebSocketEvent(.text(incomingMessage))
         }
 
         XCTAssertTrue(output.contains("Received notification: unknown"), "Debug diagnostics should remain enabled: \(output)")
@@ -579,6 +575,32 @@ final class LoggingSecurityTests: XCTestCase {
         XCTAssertNil(weakSocket, "The WebSocket must not retain itself while deinitializing")
     }
 
+    func testWebSocketDeinitDoesNotEmitLifecycleDiagnostics() throws {
+        let config = try WuKongConfig(
+            serverUrl: "ws://127.0.0.1:5200",
+            uid: "alice",
+            token: "safe-test-token",
+            autoReconnect: false,
+            enableDebugLogging: true,
+            logLevel: .debug
+        )
+
+        let output = captureStandardOutput {
+            autoreleasepool {
+                let eventManager = WuKongEventManager(config: config)
+                var socket: WuKongWebSocket? = WuKongWebSocket(
+                    config: config,
+                    eventManager: eventManager
+                )
+                withExtendedLifetime(socket) {}
+                socket = nil
+                withExtendedLifetime(eventManager) {}
+            }
+        }
+
+        XCTAssertEqual(output, "", "Deinitialization must not leak diagnostics into later operations: \(output)")
+    }
+
     func testExampleDiagnosticsDoNotInterpolateSensitiveValues() throws {
         let repositoryRoot = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()
@@ -636,21 +658,11 @@ final class LoggingSecurityTests: XCTestCase {
     }
 }
 
-private final class StubWebSocketClient: WebSocketClient {
-    func connect() {}
-    func disconnect(closeCode: UInt16) {}
-    func write(string: String, completion: (() -> Void)?) { completion?() }
-    func write(stringData: Data, completion: (() -> Void)?) { completion?() }
-    func write(data: Data, completion: (() -> Void)?) { completion?() }
-    func write(ping: Data, completion: (() -> Void)?) { completion?() }
-    func write(pong: Data, completion: (() -> Void)?) { completion?() }
-}
-
 @available(macOS 12.0, *)
-private func makeSocket(config: WuKongConfig) -> (WuKongWebSocket, WuKongEventManager, StubWebSocketClient) {
+private func makeSocket(config: WuKongConfig) -> (WuKongWebSocket, WuKongEventManager) {
     let eventManager = WuKongEventManager(config: config)
     let socket = WuKongWebSocket(config: config, eventManager: eventManager)
-    return (socket, eventManager, StubWebSocketClient())
+    return (socket, eventManager)
 }
 
 private func captureStandardOutput(_ body: () -> Void) -> String {
