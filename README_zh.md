@@ -31,14 +31,14 @@ WuKongIM 实时消息 iOS/macOS SDK。几分钟内为您的应用添加聊天功
 **Package.swift：**
 ```swift
 dependencies: [
-    .package(url: "https://github.com/WuKongIM/WuKongEasySDK-iOS.git", from: "1.0.3")
+    .package(url: "https://github.com/WuKongIM/WuKongEasySDK-iOS.git", from: "1.0.4")
 ]
 ```
 
 ### CocoaPods
 
 ```ruby
-pod 'WuKongEasySDK', '~> 1.0.3'
+pod 'WuKongEasySDK', '~> 1.0.4'
 ```
 
 ## 快速开始
@@ -149,11 +149,6 @@ let sdk = try WuKongEasySDK.create { builder in
 `enableJsonLogging` 已开启，并且只记录经过脱敏的 JSON-RPC 信封信息；参数、
 Payload、结果、错误内容、格式错误的原始输入、连接 URL、断开原因、未知方法名
 和请求 ID 均不会原样输出。
-
-> **尚未发布的 API：** `WuKongConfigBuilder.enableJsonLogging(_:)` 当前仅在
-> `main` 分支可用，将在 `1.0.3` 之后的下一个版本发布。仍使用 `1.0.3` 的应用
-> 请不要调用这个 Builder 方法；该版本可通过 `WuKongConfig` 的直接初始化方法
-> 传入 `enableJsonLogging`。
 
 ### 错误处理
 

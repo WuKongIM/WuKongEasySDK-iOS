@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.4] - 2026-08-31
+
 ### Fixed
 - Made `enableDebugLogging` the master switch for SDK, event, WebSocket, and JSON diagnostics while retaining `logLevel` as the enabled-logging severity filter
 - Added `enableJsonLogging(_:)` to `WuKongConfigBuilder`
