@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-10-23
+
+### Added
+- Typed stream parent options (`SendOptions`, `MessageSetting`) and receive-side stream flags.
+- Typed `onCustomEvent` callbacks for best-effort JSON-RPC EVENT notifications, including JSON-string event data.
+- Native SwiftUI streaming chat with simulated or compatible model SSE replies, cancellation, partial failure snapshots, and reconnect recovery.
+- Repeatable iOS Simulator acceptance with a real single-node cluster, local model fixture, JSON receipts and screenshots.
+
+### Fixed
+- Preserve stream settings and topics in legacy dictionary-based sends; reject transient stream parents and unsuccessful SENDACK results.
+- Preserve nested JSON null values in message and event payloads.
+
 ## [1.1.1] - 2026-09-01
 
 ### Fixed

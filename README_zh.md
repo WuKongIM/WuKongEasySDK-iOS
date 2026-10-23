@@ -1,7 +1,7 @@
 # WuKongEasySDK
 
 [![Swift](https://img.shields.io/badge/Swift-5.7+-orange.svg)](https://swift.org)
-[![iOS](https://img.shields.io/badge/iOS-12.0+-blue.svg)](https://developer.apple.com/ios/)
+[![iOS](https://img.shields.io/badge/iOS-15.0+-blue.svg)](https://developer.apple.com/ios/)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
 WuKongIM 实时消息 iOS/macOS SDK。几分钟内为您的应用添加聊天功能。
@@ -16,8 +16,8 @@ WuKongIM 实时消息 iOS/macOS SDK。几分钟内为您的应用添加聊天功
 
 ## 系统要求
 
-- iOS 13.0+ / macOS 12.0+ / tvOS 13.0+ / watchOS 6.0+
-- Xcode 12.0+
+- iOS 15.0+ / macOS 12.0+ / tvOS 13.0+ / watchOS 6.0+
+- Xcode 14.0+
 - Swift 5.7+
 
 ## 安装
@@ -31,14 +31,14 @@ WuKongIM 实时消息 iOS/macOS SDK。几分钟内为您的应用添加聊天功
 **Package.swift：**
 ```swift
 dependencies: [
-    .package(url: "https://github.com/WuKongIM/WuKongEasySDK-iOS.git", from: "1.1.1")
+    .package(url: "https://github.com/WuKongIM/WuKongEasySDK-iOS.git", exact: "1.2.0")
 ]
 ```
 
 ### CocoaPods
 
 ```ruby
-pod 'WuKongEasySDK', '~> 1.1.1'
+pod 'WuKongEasySDK', '1.2.0'
 ```
 
 ## 快速开始
@@ -221,3 +221,9 @@ Apache License 2.0 许可证。查看 [LICENSE](LICENSE) 文件。
 
 - [问题反馈](https://github.com/WuKongIM/WuKongEasySDK-iOS/issues)
 - [社区讨论](https://github.com/WuKongIM/WuKongIM/discussions)
+
+## 流消息
+
+1.2.0 新增 `SendOptions`、`MessageSetting` 和 `onCustomEvent`。
+原生 SwiftUI 示例的 **流消息** 页支持逐段回复、取消、失败、历史恢复和兼容模型 SSE。
+详见[流式聊天指南](Examples/WuKongIMExample-Unified/STREAMING.md)。

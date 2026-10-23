@@ -48,6 +48,7 @@ internal enum JSONRPCMethod: String, CaseIterable {
     case ping = "ping"
     case pong = "pong"
     case recv = "recv"
+    case event = "event"
     case recvack = "recvack"
     case disconnect = "disconnect"
 
@@ -1252,13 +1253,27 @@ internal class WuKongWebSocket: NSObject, @unchecked Sendable {
         let header = options["header"] as? [String: Any] ?? ["redDot": true]
 
         // Prepare message parameters
-        let messageParams: [String: Any] = [
+        var messageParams: [String: Any] = [
             "clientMsgNo": clientMsgNo,
             "channelId": channelId,
             "channelType": channelType.rawValue,
             "payload": payload,
             "header": header
         ]
+
+        guard !clientMsgNo.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            completion(.failure(WuKongError.invalidPayload("clientMsgNo must not be blank")))
+            return
+        }
+        if let setting = options["setting"] as? [String: Any] {
+            if setting["stream"] as? Bool == true &&
+                (header["noPersist"] as? Bool == true || header["syncOnce"] as? Bool == true) {
+                completion(.failure(WuKongError.invalidPayload("Stream parents must be persisted")))
+                return
+            }
+            messageParams["setting"] = setting
+        }
+        if let topic = options["topic"] as? String { messageParams["topic"] = topic }
 
         logger.debug(LogMessages.sendingMessage, String(channelType.rawValue))
 
@@ -1461,6 +1476,15 @@ internal class WuKongWebSocket: NSObject, @unchecked Sendable {
         switch method {
         case "recv":
             handleReceivedMessage(params)
+        case "event":
+            do {
+                let bytes = try JSONSerialization.data(withJSONObject: params)
+                let event = try JSONDecoder().decode(EventNotification.self, from: bytes)
+                eventManager.emit(.customEvent, data: event)
+            } catch {
+                logger.error("Invalid server event notification", cause: error)
+                eventManager.emitError(WuKongError.invalidJSON("Invalid server event notification"))
+            }
         case "pong":
             handlePong()
         case "disconnect":
@@ -1779,7 +1803,9 @@ internal class WuKongWebSocket: NSObject, @unchecked Sendable {
             throw WuKongError.unexpectedResponse("Invalid send result format")
         }
 
-        return SendResult(messageId: messageId, messageSeq: messageSeq)
+        let reasonCode = response["reasonCode"] as? Int ?? 1
+        guard reasonCode == 1 else { throw WuKongError.sendFailed("Server rejected send (code \(reasonCode))") }
+        return SendResult(messageId: messageId, messageSeq: messageSeq, reasonCode: reasonCode)
     }
 
     // MARK: - Legacy Logging Support (for backward compatibility)

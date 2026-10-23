@@ -10,10 +10,14 @@ import WuKongEasySDK
 
 struct ContentView: View {
     @StateObject private var chatManager = ChatManager()
-    @State private var selectedTab = 0
+    @State private var selectedTab = ProcessInfo.processInfo.arguments.contains("--stream-acceptance") ? 2 : 0
     
     var body: some View {
         TabView(selection: $selectedTab) {
+            StreamDemoView()
+                .tabItem { Image(systemName: "waveform.path"); Text("流消息") }
+                .tag(2)
+
             // Connection Tab
             NavigationView {
                 ConnectionView(chatManager: chatManager)
