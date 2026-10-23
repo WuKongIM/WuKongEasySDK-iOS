@@ -194,6 +194,13 @@ private class WeakEventListener {
 
 extension WuKongEventManager {
     
+    /// Add a typed server EVENT listener without message acknowledgment semantics.
+    func onCustomEvent(_ callback: @escaping (EventNotification) -> Void) -> EventListener {
+        addListener(for: .customEvent) { data in
+            if let event = data as? EventNotification { callback(event) }
+        }
+    }
+
     /// Add a connect event listener
     /// - Parameter callback: Callback with ConnectResult
     /// - Returns: EventListener for removal

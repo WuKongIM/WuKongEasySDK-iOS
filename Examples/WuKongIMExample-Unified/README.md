@@ -2,6 +2,13 @@
 
 This SwiftUI example uses one Swift Package executable target on iOS 15+ and macOS 13+. It demonstrates connecting to WuKongIM, sending and receiving messages, disconnecting, and observing SDK events.
 
+## Streaming chat
+
+Choose the **流消息** tab for the native streaming demo. It owns two independent
+SDK peers and demonstrates incremental text, cancellation, failure snapshots,
+offline generation, reconnect recovery and compatible model SSE.
+See [STREAMING.md](STREAMING.md) for configuration and repeatable acceptance.
+
 ## Requirements
 
 - Xcode 14 or newer

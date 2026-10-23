@@ -103,6 +103,20 @@ public class WuKongEasySDK {
         return result
     }
     
+    /// Send a persisted stream parent or ordinary message with typed options.
+    public func send(channelId: String, channelType: ChannelType, payload: MessagePayload,
+                     options: SendOptions) async throws -> SendResult {
+        try await send(channelId: channelId, channelType: channelType, payload: payload,
+                       options: options.dictionary)
+    }
+
+    /// Observe online events on the main queue. Retain the returned weak-listener token.
+    /// Events have no RECVACK or offline replay; restore snapshots through your backend.
+    @discardableResult
+    public func onCustomEvent(_ callback: @escaping (EventNotification) -> Void) -> EventListener {
+        eventManager.onCustomEvent(callback)
+    }
+
     // MARK: - Event Listeners
     
     /// Add a connect event listener

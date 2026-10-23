@@ -1,7 +1,7 @@
 # WuKongEasySDK
 
 [![Swift](https://img.shields.io/badge/Swift-5.7+-orange.svg)](https://swift.org)
-[![iOS](https://img.shields.io/badge/iOS-12.0+-blue.svg)](https://developer.apple.com/ios/)
+[![iOS](https://img.shields.io/badge/iOS-15.0+-blue.svg)](https://developer.apple.com/ios/)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
 iOS/macOS SDK for WuKongIM real-time messaging. Add chat functionality to your app in minutes.
@@ -16,8 +16,8 @@ iOS/macOS SDK for WuKongIM real-time messaging. Add chat functionality to your a
 
 ## Requirements
 
-- iOS 13.0+ / macOS 12.0+ / tvOS 13.0+ / watchOS 6.0+
-- Xcode 12.0+
+- iOS 15.0+ / macOS 12.0+ / tvOS 13.0+ / watchOS 6.0+
+- Xcode 14.0+
 - Swift 5.7+
 
 ## Installation
@@ -31,14 +31,14 @@ iOS/macOS SDK for WuKongIM real-time messaging. Add chat functionality to your a
 **Package.swift:**
 ```swift
 dependencies: [
-    .package(url: "https://github.com/WuKongIM/WuKongEasySDK-iOS.git", from: "1.1.1")
+    .package(url: "https://github.com/WuKongIM/WuKongEasySDK-iOS.git", exact: "1.2.0")
 ]
 ```
 
 ### CocoaPods
 
 ```ruby
-pod 'WuKongEasySDK', '~> 1.1.1'
+pod 'WuKongEasySDK', '1.2.0'
 ```
 
 ## Quick Start
@@ -261,3 +261,10 @@ Apache License 2.0. See [LICENSE](LICENSE) file.
 
 - [Issues](https://github.com/WuKongIM/WuKongEasySDK-iOS/issues)
 - [Discussions](https://github.com/WuKongIM/WuKongIM/discussions)
+
+## Streaming messages
+
+Version 1.2.0 adds typed `SendOptions`, `MessageSetting`, and `onCustomEvent`.
+The native SwiftUI example includes a **流消息** tab with progressive replies,
+cancellation, failures, history recovery, and compatible model SSE.
+See [the streaming guide](Examples/WuKongIMExample-Unified/STREAMING.md).

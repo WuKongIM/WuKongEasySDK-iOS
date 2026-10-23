@@ -21,7 +21,9 @@ internal struct AnyCodable: Codable {
     init(from decoder: Decoder) throws {
         let container = try decoder.singleValueContainer()
 
-        if let intValue = try? container.decode(Int.self) {
+        if container.decodeNil() {
+            value = NSNull()
+        } else if let intValue = try? container.decode(Int.self) {
             value = intValue
         } else if let doubleValue = try? container.decode(Double.self) {
             value = doubleValue
@@ -42,6 +44,8 @@ internal struct AnyCodable: Codable {
         var container = encoder.singleValueContainer()
 
         switch value {
+        case is NSNull:
+            try container.encodeNil()
         case let intValue as Int:
             try container.encode(intValue)
         case let doubleValue as Double:
@@ -110,6 +114,8 @@ public enum WuKongEvent: String, CaseIterable {
     case disconnect = "disconnect"
     /// Received a message
     case message = "message"
+    /// Best-effort server event notification, including public stream.* events.
+    case customEvent = "event"
     /// An error occurred (WebSocket error, connection error, etc.)
     case error = "error"
     /// Received acknowledgment for a sent message
@@ -172,10 +178,20 @@ public struct SendResult: Codable {
     public let messageId: String
     /// Message sequence number
     public let messageSeq: Int64
+    /// Server reason code; 1 means the send was accepted, not recipient delivery.
+    public let reasonCode: Int
     
-    public init(messageId: String, messageSeq: Int64) {
+    public init(messageId: String, messageSeq: Int64, reasonCode: Int = 1) {
         self.messageId = messageId
         self.messageSeq = messageSeq
+        self.reasonCode = reasonCode
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        messageId = try c.decode(String.self, forKey: .messageId)
+        messageSeq = try c.decode(Int64.self, forKey: .messageSeq)
+        reasonCode = try c.decodeIfPresent(Int.self, forKey: .reasonCode) ?? 1
     }
 }
 
@@ -228,11 +244,13 @@ public struct Message: Codable {
     public let streamFlag: Int?
     /// Topic for community channels
     public let topic: String?
+    /// Stream parent setting; a persisted parent precedes online stream events.
+    public let setting: MessageSetting?
     
     public init(header: Header, messageId: String, messageSeq: Int64, timestamp: Int64, 
                 channelId: String, channelType: Int, fromUid: String, payload: [String: Any],
                 clientMsgNo: String? = nil, streamNo: String? = nil, streamId: String? = nil,
-                streamFlag: Int? = nil, topic: String? = nil) {
+                streamFlag: Int? = nil, topic: String? = nil, setting: MessageSetting? = nil) {
         self.header = header
         self.messageId = messageId
         self.messageSeq = messageSeq
@@ -246,6 +264,7 @@ public struct Message: Codable {
         self.streamId = streamId
         self.streamFlag = streamFlag
         self.topic = topic
+        self.setting = setting
     }
     
     // Custom Codable implementation to handle [String: Any] payload
@@ -272,6 +291,7 @@ public struct Message: Codable {
         streamId = try container.decodeIfPresent(String.self, forKey: .streamId)
         streamFlag = try container.decodeIfPresent(Int.self, forKey: .streamFlag)
         topic = try container.decodeIfPresent(String.self, forKey: .topic)
+        setting = try container.decodeIfPresent(MessageSetting.self, forKey: .setting)
     }
     
     public func encode(to encoder: Encoder) throws {
@@ -294,11 +314,12 @@ public struct Message: Codable {
         try container.encodeIfPresent(streamId, forKey: .streamId)
         try container.encodeIfPresent(streamFlag, forKey: .streamFlag)
         try container.encodeIfPresent(topic, forKey: .topic)
+        try container.encodeIfPresent(setting, forKey: .setting)
     }
     
     private enum CodingKeys: String, CodingKey {
         case header, messageId, messageSeq, timestamp, channelId, channelType, fromUid, payload
-        case clientMsgNo, streamNo, streamId, streamFlag, topic
+        case clientMsgNo, streamNo, streamId, streamFlag, topic, setting
     }
 }
 

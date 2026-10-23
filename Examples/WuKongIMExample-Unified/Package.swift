@@ -18,6 +18,7 @@ let package = Package(
             dependencies: [
                 .product(name: "WuKongEasySDK", package: "WuKongEasySDK")
             ]
-        )
+        ),
+        .testTarget(name: "StreamProjectionTests", dependencies: ["WuKongIMExample-Unified"])
     ]
 )

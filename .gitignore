@@ -260,3 +260,7 @@ Generated/
 .tmp/
 tmp/
 temp/
+
+# Native demo tooling and isolated working copies
+__pycache__/
+.worktrees/
