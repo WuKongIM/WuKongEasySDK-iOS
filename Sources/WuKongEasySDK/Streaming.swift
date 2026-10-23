@@ -2,13 +2,21 @@ import Foundation
 
 /// Flags for a message's persisted stream parent.
 public struct MessageSetting: Codable {
+    /// True only for a persisted parent whose updates arrive as online events.
     public let stream: Bool
     public init(stream: Bool = false) { self.stream = stream }
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        stream = try container.decodeIfPresent(Bool.self, forKey: .stream) ?? false
+    }
+    private enum CodingKeys: String, CodingKey { case stream }
 }
 
 /// Typed send options. Keep clientMsgNo stable when reconciling a retried send.
 public struct SendOptions {
+    /// Application-owned stable identity, reused when reconciling a send.
     public let clientMsgNo: String?
+    /// Optional parent settings; transient stream parents are rejected.
     public let setting: MessageSetting?
     public let header: Header?
     public let topic: String?
@@ -40,9 +48,13 @@ public struct SendOptions {
 
 /// Best-effort online notification. The application owns projection and recovery.
 public struct EventNotification: Codable, CustomStringConvertible, CustomDebugStringConvertible {
+    /// Stable server event ID for application-side deduplication.
     public let id: String
+    /// Public event type, for example stream.delta or stream.finish.
     public let type: String
+    /// Server event timestamp, preserved without changing its wire units.
     public let timestamp: Int64
+    /// JSON data, with a JSON-string envelope decoded once for consumers.
     public let data: Any
 
     public init(id: String, type: String, timestamp: Int64, data: Any) {

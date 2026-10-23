@@ -30,6 +30,11 @@ final class StreamingTests: XCTestCase {
         XCTAssertEqual(legacy.reasonCode, 1)
     }
 
+    func testEmptyStreamSettingsRemainOrdinaryMessages() throws {
+        let value = try JSONDecoder().decode(MessageSetting.self, from: Data("{}".utf8))
+        XCTAssertFalse(value.stream)
+    }
+
     func testCustomEventDispatchedOnMainThreadWithoutRecvAck() throws {
         let config = try makeConfig()
         let events = WuKongEventManager(config: config)

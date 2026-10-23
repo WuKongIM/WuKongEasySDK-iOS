@@ -58,7 +58,10 @@ struct StreamTimeline {
         }
         if ["stream.snapshot", "stream.close", "stream.cancel", "stream.error", "stream.finish"].contains(event.type) {
             let snapshot = payload["snapshot"] as? [String: Any] ?? payload
-            if snapshot["kind"] as? String == "text", let text = snapshot["text"] as? String { row.text = text }
+            if snapshot["kind"] as? String == "text", let text = snapshot["text"] as? String {
+                row.text = text
+                if row.status == "增量中断，等待快照" { row.status = "生成中" }
+            }
         }
         switch event.type {
         case "stream.cancel": row.status = "已取消"; row.finished = true

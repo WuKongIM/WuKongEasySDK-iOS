@@ -31,6 +31,6 @@ live events, compatible model SSE, context, upstream cancellation and key secrec
 On iOS 18.3.1 Simulator with Xcode 16.2, the native acceptance passed 11 checks.
 The model fixture recorded one upstream cancellation, three history reads
 (initial plus two reconnects), and zero eventsync reads. SDK isolation checks
-passed 35 tests; the native projection passed four tests. The literal release
+passed 36 tests; the native projection passed four tests. The literal release
 package is verified independently after publication. The local all-platform
 CocoaPods lint encountered a missing tvOS simulator; iOS/macOS lint passed.
